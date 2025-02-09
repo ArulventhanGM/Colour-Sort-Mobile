@@ -1,40 +1,16 @@
+# connections_game
 
-# Colour Sort Mobile
+A new Flutter project.
 
-## Overview
-Colour Sort Mobile is a mobile application designed to help users sort and organize colors efficiently. The app provides a user-friendly interface for managing color palettes and sorting colors based on various criteria.
+## Getting Started
 
-## Features
-- User-friendly interface
-- Sort colors by hue, saturation, and brightness
-- Save and manage color palettes
-- Export color palettes for use in other applications
+This project is a starting point for a Flutter application.
 
-## Installation
-To install the Colour Sort Mobile app, follow these steps:
+A few resources to get you started if this is your first Flutter project:
 
-1. Clone the repository:
-    ```sh
-    git clone https://github.com/yourusername/Colour-Sort-Mobile.git
-    ```
-2. Navigate to the project directory:
-    ```sh
-    cd Colour-Sort-Mobile
-    ```
-3. Install the dependencies:
-    ```sh
-    npm install
-    ```
-4. Run the app:
-    ```sh
-    npm start
-    ```
+- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
+- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
 
-## Usage
-Once the app is running, you can start sorting and managing your color palettes. Use the intuitive interface to add, sort, and export colors as needed.
-
-## Contributing
-We welcome contributions to improve Colour Sort Mobile. Please fork the repository and submit pull requests for any enhancements or bug fixes.
-
-## License
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+For help getting started with Flutter development, view the
+[online documentation](https://docs.flutter.dev/), which offers tutorials,
+samples, guidance on mobile development, and a full API reference.
