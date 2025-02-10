@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
+import 'package:confetti/confetti.dart';
 
 void main() {
   runApp(const MyApp());
@@ -38,6 +39,19 @@ class _GameHomePageState extends State<GameHomePage> with TickerProviderStateMix
   ];
   int? _selectedTube;
   final List<List<List<Color>>> _history = [];
+  late ConfettiController _confettiController;
+
+  @override
+  void initState() {
+    super.initState();
+    _confettiController = ConfettiController(duration: const Duration(seconds: 2));
+  }
+
+  @override
+  void dispose() {
+    _confettiController.dispose();
+    super.dispose();
+  }
 
   bool _canPour(int fromTube, int toTube) {
     if (_tubes[fromTube].isEmpty) return false;
@@ -47,18 +61,21 @@ class _GameHomePageState extends State<GameHomePage> with TickerProviderStateMix
 
   void _pourWater(int fromTube, int toTube) {
     if (_canPour(fromTube, toTube)) {
+      List<Color> colorsToPour = [];
       setState(() {
         if (_tubes[fromTube].length >= 2 && _tubes[fromTube].sublist(_tubes[fromTube].length - 2).toSet().length == 1) {
           Color colorToPour1 = _tubes[fromTube].removeLast();
           Color colorToPour2 = _tubes[fromTube].removeLast();
+          colorsToPour = [colorToPour2, colorToPour1];
           _history.add(_tubes.map((tube) => List<Color>.from(tube)).toList());
-          _animatePour(fromTube, toTube, [colorToPour2, colorToPour1]);
         } else {
           Color colorToPour = _tubes[fromTube].removeLast();
+          colorsToPour = [colorToPour];
           _history.add(_tubes.map((tube) => List<Color>.from(tube)).toList());
-          _animatePour(fromTube, toTube, [colorToPour]);
         }
+        _tubes[toTube].addAll(colorsToPour); // Update the target tube immediately
       });
+      _animatePour(fromTube, toTube, colorsToPour); // Start animation after state update
     } else {
       _showErrorPopup("Invalid move! Cannot pour water. The tube is already full.");
     }
@@ -73,13 +90,13 @@ class _GameHomePageState extends State<GameHomePage> with TickerProviderStateMix
           toTubeIndex: toTube,
           colors: colors,
           onCompleted: () {
-            setState(() {
-              _tubes[toTube].addAll(colors);
-              if (_isGameComplete()) {
-                _showCompletionPopup();
-              }
-            });
-            overlayEntry?.remove();
+            overlayEntry?.remove(); // Remove overlay first
+
+            // Add colors to the target tube and check win condition
+            _checkWinCondition();
+
+            // Trigger a rebuild of the widget tree
+            setState(() {});
           },
         ),
       );
@@ -87,33 +104,32 @@ class _GameHomePageState extends State<GameHomePage> with TickerProviderStateMix
     });
   }
 
-  void _showCompletionPopup() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.green[100],
-        title: const Text(
-          'Congratulations!',
-          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.green),
-        ),
-        content: const Text(
-          'You successfully sorted all colors! Moving to the next level...',
-          style: TextStyle(fontSize: 20, color: Colors.black87),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _nextLevel();
-            },
-            child: const Text(
-              'Next Level',
-              style: TextStyle(fontSize: 18, color: Colors.green),
+  void _checkWinCondition() {
+    // Delay the check to allow the UI to update
+    Future.delayed(const Duration(milliseconds: 100), () {
+      bool hasWon = _tubes.every((tube) => tube.isEmpty || (tube.length == 3 && tube.toSet().length == 1));
+      if (hasWon) {
+        _confettiController.play();
+        Future.delayed(const Duration(seconds: 2), () {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Congratulations!'),
+              content: const Text('You successfully sorted all colors! Moving to the next level...'),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    _nextLevel();
+                  },
+                  child: const Text('Next Level'),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
-    );
+          );
+        });
+      }
+    });
   }
 
   void _showErrorPopup(String message) {
@@ -166,10 +182,6 @@ class _GameHomePageState extends State<GameHomePage> with TickerProviderStateMix
     });
   }
 
-  bool _isGameComplete() {
-    return _tubes.every((tube) => tube.isEmpty || (tube.length == 3 && tube.toSet().length == 1));
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -204,39 +216,21 @@ class _GameHomePageState extends State<GameHomePage> with TickerProviderStateMix
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-                  if (_isGameComplete())
-                    Container(
-                      margin: const EdgeInsets.all(10),
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.green[50],
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: const [
-                          BoxShadow(color: Colors.green, blurRadius: 5),
-                        ],
-                      ),
-                      child: const Text(
-                        '🎉 Congratulations! You completed the level! 🎉',
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green,
-                        ),
-                      ),
-                    ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(_tubes.length, (index) {
                       return GestureDetector(
                         onTap: () {
-                          setState(() {
-                            if (_selectedTube == null) {
+                          if (_selectedTube == null) {
+                            setState(() {
                               _selectedTube = index;
-                            } else {
-                              _pourWater(_selectedTube!, index);
+                            });
+                          } else {
+                            _pourWater(_selectedTube!, index);
+                            setState(() {
                               _selectedTube = null;
-                            }
-                          });
+                            });
+                          }
                         },
                         child: AnimatedScale(
                           scale: _selectedTube == index ? 1.1 : 1.0,
@@ -251,6 +245,17 @@ class _GameHomePageState extends State<GameHomePage> with TickerProviderStateMix
                   ),
                 ],
               ),
+            ),
+          ),
+          Align( // Align the confetti to cover the whole screen
+            alignment: Alignment.topCenter,
+            child: ConfettiWidget(
+              confettiController: _confettiController,
+              blastDirectionality: BlastDirectionality.explosive,
+              shouldLoop: false,
+              colors: const [
+                Colors.red, Colors.green, Colors.blue, Colors.orange, Colors.purple
+              ],
             ),
           ),
         ],
@@ -271,13 +276,26 @@ class TubePainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 4.0;
 
-    // Draw the tube with straight top and thicker walls
-    Path tubePath = Path();
+    // Draw the tube with rounded bottom and thicker walls
     double tubeWidth = size.width - 10;
+    double borderRadius = 10; // Radius for rounded corners
+
+    Path tubePath = Path();
     tubePath.moveTo(5, 0);
     tubePath.lineTo(5 + tubeWidth, 0); // Straight top
-    tubePath.lineTo(5 + tubeWidth, size.height);
-    tubePath.lineTo(5, size.height);
+    tubePath.lineTo(5 + tubeWidth, size.height - borderRadius);
+    tubePath.arcToPoint(
+      Offset(5 + tubeWidth - borderRadius, size.height),
+      radius: Radius.circular(borderRadius),
+      clockwise: false,
+    );
+    tubePath.lineTo(5 + borderRadius, size.height);
+    tubePath.arcToPoint(
+      Offset(5, size.height - borderRadius),
+      radius: Radius.circular(borderRadius),
+      clockwise: false,
+    );
+    tubePath.lineTo(5, 0);
     tubePath.close();
     canvas.drawPath(tubePath, paint);
 
