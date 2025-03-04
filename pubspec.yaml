@@ -1,7 +1,6 @@
 name: connections_game
 description: "A new Flutter project."
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
-
+publish_to: 'none'
 version: 1.0.0+1
 
 environment:
@@ -10,8 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  confetti: ^0.7.0
   cupertino_icons: ^1.0.8
+  confetti: ^0.7.0  # Add this for celebration effects
 
 dev_dependencies:
   flutter_test:
@@ -20,8 +19,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-
-  assets:
 
 
 

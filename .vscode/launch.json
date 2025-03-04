@@ -5,9 +5,76 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Dart & Flutter",
+            "name": "Flutter: Attach to Device",
+            "type": "dart",
+            "request": "attach"
+        },
+
+
+
+
+        {
+            "name": "Flutter",
+            "type": "dart",
+            "request": "launch",
+            "program": "lib/main.dart"
+        },
+        {
+            "name": "Colour-Sort-Mobile",
             "request": "launch",
             "type": "dart"
+        },
+        {
+            "name": "Colour-Sort-Mobile (profile mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile"
+        },
+        {
+            "name": "Colour-Sort-Mobile (release mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release"
+        },
+        {
+            "name": "Colour-Sort-Mobile",
+            "cwd": "Colour-Sort-Mobile",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
+            "name": "Colour-Sort-Mobile (profile mode)",
+            "cwd": "Colour-Sort-Mobile",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile"
+        },
+        {
+            "name": "Colour-Sort-Mobile (release mode)",
+            "cwd": "Colour-Sort-Mobile",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release"
+        },
+        {
+            "name": "structure_fix_3-02_1849",
+            "cwd": "backups\\structure_fix_3-02_1849",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
+            "name": "structure_fix_3-02_1849 (profile mode)",
+            "cwd": "backups\\structure_fix_3-02_1849",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile"
+        },
+        {
+            "name": "structure_fix_3-02_1849 (release mode)",
+            "cwd": "backups\\structure_fix_3-02_1849",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release"
         }
     ]
 }
