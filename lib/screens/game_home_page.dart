@@ -28,6 +28,9 @@ class _GameHomePageState extends State<GameHomePage> with TickerProviderStateMix
   Offset? _pourEnd;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final Map<int, GlobalKey> _tubeKeys = {};
+  int _coins = 40; // Starting coins
+  int _undoMovesLeft = 4; // Available free undo moves
+  int _extraTubePrice = 20; // Cost to add an extra tube
 
   @override
   void initState() {
@@ -354,8 +357,14 @@ class _GameHomePageState extends State<GameHomePage> with TickerProviderStateMix
     if (_history.isNotEmpty && !_animating) {
       setState(() {
         _tubes = _history.removeLast().map((tube) => List<Color>.from(tube)).toList();
-        _moves++;
+        
+        // Only decrement undo counter if we're not using unlimited undos
+        if (_undoMovesLeft > 0) {
+          _undoMovesLeft--;
+        }
       });
+    } else if (_undoMovesLeft <= 0 && _history.isNotEmpty) {
+      _showErrorPopup("No free undo moves left!");
     }
   }
 
@@ -390,23 +399,236 @@ class _GameHomePageState extends State<GameHomePage> with TickerProviderStateMix
     }
   }
 
+  void _addExtraTube() {
+    if (_coins >= _extraTubePrice) {
+      setState(() {
+        _coins -= _extraTubePrice;
+        
+        // Create a new empty tube
+        _tubes.add([]);
+        _tubeKeys[_tubes.length - 1] = GlobalKey();
+        
+        // Increase price for next tube
+        _extraTubePrice = (_extraTubePrice * 1.5).round();
+      });
+    } else {
+      _showErrorPopup("Not enough coins to add a tube!");
+    }
+  }
+
+  void _showSettings() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Settings'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.music_note),
+              title: const Text('Music'),
+              trailing: Switch(
+                value: true,
+                onChanged: (value) {
+                  // TODO: Implement music settings
+                  Navigator.of(context).pop();
+                },
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.volume_up),
+              title: const Text('Sound Effects'),
+              trailing: Switch(
+                value: true,
+                onChanged: (value) {
+                  // TODO: Implement sound settings
+                  Navigator.of(context).pop();
+                },
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.vibration),
+              title: const Text('Vibration'),
+              trailing: Switch(
+                value: true,
+                onChanged: (value) {
+                  // TODO: Implement vibration settings
+                  Navigator.of(context).pop();
+                },
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showStore() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Store'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.arrow_back, color: Colors.blue),
+              title: const Text('10 Undo Moves'),
+              subtitle: const Text('Never get stuck again'),
+              trailing: ElevatedButton(
+                onPressed: () {
+                  // TODO: Implement purchase
+                  setState(() {
+                    _undoMovesLeft += 10;
+                    _coins -= 30; // Cost for 10 undo moves
+                  });
+                  Navigator.of(context).pop();
+                },
+                child: const Text('30 🪙'),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.lightbulb, color: Colors.amber),
+              title: const Text('5 Hints'),
+              subtitle: const Text('Get unstuck with smart suggestions'),
+              trailing: ElevatedButton(
+                onPressed: () {
+                  // TODO: Implement hint purchase
+                  Navigator.of(context).pop();
+                },
+                child: const Text('20 🪙'),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.monetization_on, color: Colors.orange),
+              title: const Text('100 Coins'),
+              subtitle: const Text('Currency pack'),
+              trailing: ElevatedButton(
+                onPressed: () {
+                  // TODO: Implement coin purchase
+                  Navigator.of(context).pop();
+                },
+                child: const Text('\$1.99'),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      appBar: AppBar(
-        title: Text('Level $_level - Color Sort'),
-        backgroundColor: Colors.blue[700],
-        foregroundColor: Colors.white,
-        elevation: 3,
-        centerTitle: true,
+      // Replace AppBar with custom header - remove undo counter
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(56.0),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue[900]!, Colors.blue[700]!],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 4.0,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: SafeArea(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Left side buttons
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.settings, color: Colors.white),
+                      onPressed: _showSettings,
+                      tooltip: 'Settings',
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.store, color: Colors.white),
+                      onPressed: _showStore,
+                      tooltip: 'Store',
+                    ),
+                  ],
+                ),
+                
+                // Center - Level display
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[800],
+                    borderRadius: BorderRadius.circular(15.0),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.25),
+                        blurRadius: 3.0,
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    'LEVEL $_level',
+                    style: const TextStyle(
+                      fontSize: 22.0,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ),
+                
+                // Right side - just coins indicator
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
+                  decoration: BoxDecoration(
+                    color: Colors.amber[700],
+                    borderRadius: BorderRadius.circular(15.0),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.monetization_on, color: Colors.white, size: 20),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$_coins',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
+      
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.blue[100]!, Colors.lightBlue[50]!],
+            colors: [Colors.blue[900]!, Colors.blue[200]!], // Deeper gradient for more contrast
           ),
         ),
         child: Stack(
@@ -419,7 +641,9 @@ class _GameHomePageState extends State<GameHomePage> with TickerProviderStateMix
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Card(
-                        elevation: 3,
+                        elevation: 5,
+                        color: Colors.white.withOpacity(0.9),
+                        shadowColor: Colors.black.withOpacity(0.4),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(15),
                         ),
@@ -427,35 +651,59 @@ class _GameHomePageState extends State<GameHomePage> with TickerProviderStateMix
                           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                           child: Column(
                             children: [
-                              const Text(
+                              Text(
                                 'MOVES',
-                                style: TextStyle(fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold, 
+                                  color: Colors.blue[900]
+                                ),
                               ),
                               Text(
                                 '$_moves',
-                                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                  fontSize: 24, 
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue[800]
+                                ),
                               ),
                             ],
                           ),
                         ),
                       ),
-                      Row(
-                        children: List.generate(3, (index) {
-                          return Icon(
-                            Icons.star,
-                            size: 30,
-                            color: index < _stars ? Colors.amber : Colors.grey[300],
-                          );
-                        }),
+                      
+                      // Stars rating
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(15),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            )
+                          ]
+                        ),
+                        child: Row(
+                          children: List.generate(3, (index) {
+                            return Icon(
+                              Icons.star,
+                              size: 30,
+                              color: index < _stars ? Colors.amber : Colors.grey[300],
+                            );
+                          }),
+                        ),
                       ),
                     ],
                   ),
                 ),
+                
                 Expanded(
                   child: Center(
                     child: LayoutBuilder(
                       builder: (context, constraints) {
-                        double tubeWidth = constraints.maxWidth / (_tubes.length + 1);
+                        double tubeWidth = constraints.maxWidth / (_tubes.length + 2);
                         tubeWidth = min(tubeWidth, 60.0);
                         double tubeHeight = tubeWidth * 3;
                         
@@ -463,45 +711,118 @@ class _GameHomePageState extends State<GameHomePage> with TickerProviderStateMix
                           alignment: WrapAlignment.center,
                           spacing: 10,
                           runSpacing: 20,
-                          children: List.generate(_tubes.length, (index) {
-                            return GestureDetector(
-                              key: _tubeKeys[index],
-                              onTap: () {
-                                if (_animating) return;
-                                
-                                setState(() {
-                                  if (_selectedTube == null) {
-                                    if (_tubes[index].isNotEmpty) {
-                                      _selectedTube = index;
-                                    }
-                                  } else {
-                                    // If same tube is tapped, deselect it
-                                    if (_selectedTube == index) {
-                                      _selectedTube = null;
+                          children: [
+                            // Tubes
+                            ...List.generate(_tubes.length, (index) {
+                              return GestureDetector(
+                                key: _tubeKeys[index],
+                                onTap: () {
+                                  if (_animating) return;
+                                  
+                                  setState(() {
+                                    if (_selectedTube == null) {
+                                      if (_tubes[index].isNotEmpty) {
+                                        _selectedTube = index;
+                                      }
                                     } else {
-                                      _pourWater(_selectedTube!, index);
-                                      _selectedTube = null;
+                                      // If same tube is tapped, deselect it
+                                      if (_selectedTube == index) {
+                                        _selectedTube = null;
+                                      } else {
+                                        _pourWater(_selectedTube!, index);
+                                        _selectedTube = null;
+                                      }
                                     }
-                                  }
-                                });
-                              },
-                              child: AnimatedScale(
-                                scale: _selectedTube == index ? 1.1 : 1.0,
-                                duration: const Duration(milliseconds: 200),
-                                child: CustomPaint(
-                                  painter: TubePainter(
-                                    colors: _tubes[index],
-                                    isSelected: _selectedTube == index,
-                                    maxCapacity: 4,
-                                  ),
-                                  child: SizedBox(
-                                    width: tubeWidth,
-                                    height: tubeHeight,
+                                  });
+                                },
+                                child: AnimatedScale(
+                                  scale: _selectedTube == index ? 1.1 : 1.0,
+                                  duration: const Duration(milliseconds: 200),
+                                  child: CustomPaint(
+                                    painter: TubePainter(
+                                      colors: _tubes[index],
+                                      isSelected: _selectedTube == index,
+                                      maxCapacity: 4,
+                                    ),
+                                    child: SizedBox(
+                                      width: tubeWidth,
+                                      height: tubeHeight,
+                                    ),
                                   ),
                                 ),
+                              );
+                            }),
+                            
+                            // Add Tube Button
+                            GestureDetector(
+                              onTap: _addExtraTube,
+                              child: Container(
+                                width: tubeWidth,
+                                height: tubeHeight,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(15),
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.5),
+                                    width: 2,
+                                  ),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.add_circle_outline,
+                                      color: Colors.white.withOpacity(0.9),
+                                      size: 32,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      '+',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white.withOpacity(0.9),
+                                      ),
+                                    ),
+                                    Text(
+                                      'Add Tube',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.white.withOpacity(0.9),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.amber[700],
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            '$_extraTubePrice',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 10,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 2),
+                                          const Icon(
+                                            Icons.monetization_on,
+                                            color: Colors.white,
+                                            size: 10,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            );
-                          }),
+                            ),
+                          ],
                         );
                       },
                     ),
@@ -509,6 +830,8 @@ class _GameHomePageState extends State<GameHomePage> with TickerProviderStateMix
                 ),
               ],
             ),
+            
+            // Animation for pouring - no changes needed
             if (_pouringColor != null && _pourStart != null && _pourEnd != null)
               AnimatedBuilder(
                 animation: _pourController,
@@ -618,27 +941,74 @@ class _GameHomePageState extends State<GameHomePage> with TickerProviderStateMix
           ],
         ),
       ),
-      bottomNavigationBar: BottomAppBar(
-        elevation: 8,
-        padding: EdgeInsets.zero,
+      
+      bottomNavigationBar: Container(
         height: 70,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.blue[900]!, Colors.blue[700]!],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 5.0,
+              spreadRadius: 0.5,
+              offset: const Offset(0, -1),
+            ),
+          ],
+        ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
+            // Restart button
             ControlButton(
               icon: Icons.refresh,
               label: 'Restart',
               onPressed: _restartGame,
+              color: Colors.white,
             ),
-            ControlButton(
-              icon: Icons.undo,
-              label: 'Undo',
-              onPressed: _undoMove,
+            
+            // Undo button with counter
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                ControlButton(
+                  icon: Icons.arrow_back,
+                  label: 'Undo',
+                  onPressed: _undoMove,
+                  color: _undoMovesLeft > 0 ? Colors.white : Colors.grey[400]!,
+                ),
+                if (_undoMovesLeft > 0)
+                  Positioned(
+                    top: -5,
+                    right: -5,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.red[400],
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '$_undoMovesLeft',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
+            
+            // Hint button
             ControlButton(
               icon: Icons.lightbulb_outline,
               label: 'Hint',
               onPressed: _showHint,
+              color: Colors.white,
             ),
           ],
         ),

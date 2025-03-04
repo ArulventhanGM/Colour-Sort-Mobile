@@ -4,12 +4,14 @@ class ControlButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onPressed;
+  final Color color;
 
   const ControlButton({
     super.key,
     required this.icon,
     required this.label,
     required this.onPressed,
+    this.color = Colors.black87,
   });
 
   @override
@@ -22,8 +24,12 @@ class ControlButton extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 28),
-            Text(label, style: const TextStyle(fontSize: 12)),
+            Icon(icon, size: 28, color: color),
+            const SizedBox(height: 2),
+            Text(
+              label, 
+              style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500),
+            ),
           ],
         ),
       ),
