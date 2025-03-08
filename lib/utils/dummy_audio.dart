@@ -1,32 +1,46 @@
 import 'package:flutter/foundation.dart';
+import 'dart:io';
+import 'dart:async';
+import 'package:flutter/services.dart';
 
 /// Provides dummy audio files to avoid crashes when audio assets are missing
 class DummyAudio {
   static Future<void> setupDummyAudio() async {
     try {
-      // Create dummy AudioSource for each required sound file
-      await _createDummyAudio('sounds/select.mp3');
-      await _createDummyAudio('sounds/pour.mp3');
-      await _createDummyAudio('sounds/bubble.mp3');
-      await _createDummyAudio('sounds/level_complete.mp3');
-      await _createDummyAudio('sounds/error.mp3');
-      await _createDummyAudio('sounds/background.mp3');
-      
+      // Check if sound assets directories exist
       if (kDebugMode) {
-        print('Dummy audio setup complete');
+        print('Setting up audio verification...');
+      }
+
+      // Rather than creating dummy files, we'll verify the audio files exist
+      await _verifyAudioAsset('sounds/select.mp3');
+      await _verifyAudioAsset('sounds/pour.mp3');
+      await _verifyAudioAsset('sounds/bubble.mp3');
+      await _verifyAudioAsset('sounds/level_complete.mp3');
+      await _verifyAudioAsset('sounds/error.mp3');
+      await _verifyAudioAsset('sounds/background.mp3');
+
+      if (kDebugMode) {
+        print('Audio verification complete');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error setting up dummy audio: $e');
+        print('Error verifying audio: $e');
       }
     }
   }
-  
-  static Future<void> _createDummyAudio(String assetPath) async {
-    // This is just a placeholder to prevent crashes
-    // In a real app, you would create actual sound files
-    if (kDebugMode) {
-      print('Created dummy audio for: $assetPath');
+
+  static Future<void> _verifyAudioAsset(String assetPath) async {
+    try {
+      // Try to load the asset to verify it exists
+      final ByteData data = await rootBundle.load('assets/$assetPath');
+      if (kDebugMode) {
+        print('✓ Asset found: $assetPath (${data.lengthInBytes} bytes)');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('✗ Asset not found: $assetPath - $e');
+      }
     }
   }
 }
