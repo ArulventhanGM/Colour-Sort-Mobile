@@ -5,6 +5,9 @@ import '../painters/tube_painter.dart';
 import '../utils/game_logic.dart';
 import '../widgets/control_button.dart';
 import '../models/level_data.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/services.dart';
+import '../utils/audio_manager.dart'; // Add this import
 
 class GameHomePage extends StatefulWidget {
   const GameHomePage({super.key});
@@ -32,6 +35,26 @@ class _GameHomePageState extends State<GameHomePage> with TickerProviderStateMix
   int _undoMovesLeft = 4; // Available free undo moves
   int _extraTubePrice = 20; // Cost to add an extra tube
 
+  // Audio players for sound effects
+  final AudioPlayer _bubblePlayer = AudioPlayer();
+  final AudioPlayer _pourPlayer = AudioPlayer();
+  final AudioPlayer _completePlayer = AudioPlayer();
+  final AudioPlayer _selectPlayer = AudioPlayer();
+  
+  // Additional animation controllers
+  late AnimationController _liftController;
+  late AnimationController _rotateController;
+  late AnimationController _dropController;
+  
+  // Animation tracking variables
+  int? _liftedTube;
+  
+  int? _targetTube;
+  Offset? _liftedTubeStartPosition;
+  Offset? _targetTubePosition;
+  double? _liftedTubeAngle;
+  bool _vibrateEnabled = true;
+
   @override
   void initState() {
     super.initState();
@@ -50,14 +73,72 @@ class _GameHomePageState extends State<GameHomePage> with TickerProviderStateMix
           });
         }
       });
+      
+    // Initialize new animation controllers
+    _liftController = AnimationController(
+      vsync: this, 
+      duration: const Duration(milliseconds: 300),
+    );
+    
+    _rotateController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    
+    _dropController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    
     _initializeLevel();
+    _loadSoundEffects();
   }
 
   @override
   void dispose() {
     _popupController.dispose();
     _pourController.dispose();
+    _liftController.dispose();
+    _rotateController.dispose();
+    _dropController.dispose();
+    _bubblePlayer.dispose();
+    _pourPlayer.dispose();
+    _completePlayer.dispose();
+    _selectPlayer.dispose();
     super.dispose();
+  }
+  
+  Future<void> _loadSoundEffects() async {
+    try {
+      // Use AudioManager instead of individual AudioPlayers
+      await AudioManager().initialize();
+    } catch (e) {
+      print('Error loading sound effects: $e');
+      // Don't let sound loading failures crash the app
+    }
+  }
+
+  void _playSound(AudioPlayer player) {
+    try {
+      // Use AudioManager's methods instead
+      if (player == _selectPlayer) {
+        AudioManager().playSelect();
+      } else if (player == _pourPlayer) {
+        AudioManager().playPour();
+      } else if (player == _completePlayer) {
+        AudioManager().playComplete();
+      } else if (player == _bubblePlayer) {
+        AudioManager().playBubble();
+      }
+    } catch (e) {
+      print('Error playing sound: $e');
+    }
+  }
+  
+  void _vibrateDevice() {
+    if (_vibrateEnabled) {
+      HapticFeedback.mediumImpact();
+    }
   }
 
   void _initializeLevel() {
@@ -160,60 +241,113 @@ class _GameHomePageState extends State<GameHomePage> with TickerProviderStateMix
       if (colorCount == 0) {
         return;
       }
-      
+
       setState(() {
         _animating = true;
         _pouringColor = colorToPour;
+        _liftedTube = fromTube;
+        _targetTube = toTube;
         
-        // Calculate start and end positions for the pouring animation
-        final sourceGlobalPosition = sourceTubeRenderBox.localToGlobal(Offset.zero);
-        final targetGlobalPosition = targetTubeRenderBox.localToGlobal(Offset.zero);
+        // Calculate global positions for animation
+        final sourcePosition = sourceTubeRenderBox.localToGlobal(Offset.zero);
+        final targetPosition = targetTubeRenderBox.localToGlobal(Offset.zero);
         
-        // Calculate accurate pouring positions
+        _liftedTubeStartPosition = sourcePosition;
+        _targetTubePosition = targetPosition;
+        
+        // Calculate pour start and end positions more accurately
         _pourStart = Offset(
-          sourceGlobalPosition.dx + sourceTubeRenderBox.size.width / 2,
-          sourceGlobalPosition.dy + 10 // Just below top edge
+          sourcePosition.dx + sourceTubeRenderBox.size.width / 2,
+          sourcePosition.dy + 10
         );
         
         _pourEnd = Offset(
-          targetGlobalPosition.dx + targetTubeRenderBox.size.width / 2,
-          targetGlobalPosition.dy + 10 // Just below top edge
+          targetPosition.dx + targetTubeRenderBox.size.width / 2,
+          targetPosition.dy + 10
         );
         
-        // Actually remove the colors now
+        // Remove the colors to pour
         for (int i = 0; i < colorCount; i++) {
           if (_tubes[fromTube].isNotEmpty) {
             colorsToPour.add(_tubes[fromTube].removeLast());
           }
         }
         
-        // Add to history and update moves count before animation
+        // Add to history and update moves
         _history.add(_tubes.map((tube) => List<Color>.from(tube)).toList());
         _moves++;
         _updateStars();
+      });
+      
+      // Begin lift animation sequence
+      _vibrateDevice();
+      _playSound(_selectPlayer);
+
+      _liftController.forward(from: 0).then((_) {
+        // Rotate tube to pour
+        _liftedTubeAngle = _calculatePouringAngle(fromTube, toTube);
+        _playSound(_pourPlayer);
         
-        // Animate the pouring
-        _pourController.forward(from: 0).then((_) {
-          if (mounted) {  // Check if the widget is still mounted before setState
-            setState(() {
-              _tubes[toTube].addAll(colorsToPour);
-              // Check if game is complete after adding the colors
-              if (GameLogic.isGameComplete(_tubes)) {
-                Future.delayed(const Duration(milliseconds: 500), () {
-                  if (mounted) {  // Check again before showing dialog
-                    _showCompletionPopup();
-                  }
-                });
-              }
+        _rotateController.forward(from: 0).then((_) {
+          // Run pouring animation
+          _pourController.forward(from: 0).then((_) {
+            // Return tube to upright position
+            _rotateController.reverse().then((_) {
+              // Return tube to original position
+              _dropController.forward(from: 0).then((_) {
+                if (mounted) {
+                  setState(() {
+                    _tubes[toTube].addAll(colorsToPour);
+                    _animating = false;
+                    _pouringColor = null;
+                    _liftedTube = null;
+                    _targetTube = null;
+                    _liftedTubeStartPosition = null;
+                    _targetTubePosition = null;
+                    _liftedTubeAngle = null;
+                    
+                    // Reset animation controllers
+                    _liftController.reset();
+                    _rotateController.reset();
+                    _dropController.reset();
+                    
+                    // Check if game is complete
+                    if (GameLogic.isGameComplete(_tubes)) {
+                      _playSound(_completePlayer);
+                      Future.delayed(const Duration(milliseconds: 500), () {
+                        if (mounted) {
+                          _showCompletionPopup();
+                        }
+                      });
+                    }
+                  });
+                }
+              });
             });
-          }
+          });
         });
       });
     } catch (e) {
       print("Error during pour animation: $e");
-      // Fall back to basic pour if anything goes wrong
       _performBasicPour(fromTube, toTube);
     }
+  }
+  
+  double _calculatePouringAngle(int fromTube, int toTube) {
+    // Calculate which direction to pour based on tube positions
+    if (_liftedTubeStartPosition != null && _targetTubePosition != null) {
+      // Pour to the right
+      if (_liftedTubeStartPosition!.dx < _targetTubePosition!.dx) {
+        return pi / 4; // 45 degrees clockwise
+      } 
+      // Pour to the left
+      else {
+        return -pi / 4; // 45 degrees counter-clockwise
+      }
+    }
+    
+    // Default pour angle if positions aren't available
+    return fromTube < toTube ? pi / 4 : -pi / 4;
   }
 
   void _updateStars() {
@@ -450,9 +584,11 @@ class _GameHomePageState extends State<GameHomePage> with TickerProviderStateMix
               leading: const Icon(Icons.vibration),
               title: const Text('Vibration'),
               trailing: Switch(
-                value: true,
+                value: _vibrateEnabled,
                 onChanged: (value) {
-                  // TODO: Implement vibration settings
+                  setState(() {
+                    _vibrateEnabled = value;
+                  });
                   Navigator.of(context).pop();
                 },
               ),
@@ -723,11 +859,14 @@ class _GameHomePageState extends State<GameHomePage> with TickerProviderStateMix
                                     if (_selectedTube == null) {
                                       if (_tubes[index].isNotEmpty) {
                                         _selectedTube = index;
+                                        _playSound(_selectPlayer);
+                                        _vibrateDevice();
                                       }
                                     } else {
                                       // If same tube is tapped, deselect it
                                       if (_selectedTube == index) {
                                         _selectedTube = null;
+                                        _playSound(_selectPlayer);
                                       } else {
                                         _pourWater(_selectedTube!, index);
                                         _selectedTube = null;
@@ -735,20 +874,73 @@ class _GameHomePageState extends State<GameHomePage> with TickerProviderStateMix
                                     }
                                   });
                                 },
-                                child: AnimatedScale(
-                                  scale: _selectedTube == index ? 1.1 : 1.0,
-                                  duration: const Duration(milliseconds: 200),
-                                  child: CustomPaint(
-                                    painter: TubePainter(
-                                      colors: _tubes[index],
-                                      isSelected: _selectedTube == index,
-                                      maxCapacity: 4,
-                                    ),
-                                    child: SizedBox(
-                                      width: tubeWidth,
-                                      height: tubeHeight,
-                                    ),
-                                  ),
+                                child: AnimatedBuilder(
+                                  animation: Listenable.merge([
+                                    _liftController, 
+                                    _rotateController,
+                                    _dropController
+                                  ]),
+                                  builder: (context, child) {
+                                    // If this is not the tube being animated, render normally
+                                    if (index != _liftedTube) {
+                                      return AnimatedScale(
+                                        scale: _selectedTube == index ? 1.1 : 1.0,
+                                        duration: const Duration(milliseconds: 200),
+                                        child: CustomPaint(
+                                          painter: TubePainter(
+                                            colors: _tubes[index],
+                                            isSelected: _selectedTube == index,
+                                            maxCapacity: 4,
+                                          ),
+                                          child: SizedBox(
+                                            width: tubeWidth,
+                                            height: tubeHeight,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                    
+                                    // Calculate lift, rotation and position for animated tube
+                                    double liftValue = _liftController.value * 30.0;
+                                    double translateY = -liftValue + (_dropController.value * liftValue);
+                                    
+                                    // Calculate rotation angle
+                                    double rotationAngle = _liftedTubeAngle != null 
+                                        ? _rotateController.value * _liftedTubeAngle!
+                                        : 0.0;
+                                        
+                                    // Calculate horizontal movement (if any)
+                                    double horizontalShift = 0.0;
+                                    if (_liftedTubeStartPosition != null && 
+                                        _targetTubePosition != null && 
+                                        _rotateController.value > 0.3) {
+                                      horizontalShift = (_targetTubePosition!.dx - _liftedTubeStartPosition!.dx) * 
+                                          (_rotateController.value - 0.3) / 0.7 * 0.3; // Just a subtle shift, not full movement
+                                    }
+                                    
+                                    return Transform.translate(
+                                      offset: Offset(horizontalShift, translateY),
+                                      child: Transform(
+                                        alignment: Alignment.topCenter,
+                                        transform: Matrix4.identity()
+                                          ..setEntry(3, 2, 0.001) // Perspective
+                                          ..rotateZ(rotationAngle),
+                                        child: CustomPaint(
+                                          painter: TubePainter(
+                                            colors: _tubes[index],
+                                            isSelected: true,
+                                            maxCapacity: 4,
+                                            pouringAnimation: _rotateController.value > 0.5,
+                                            pouringProgress: _pourController.value,
+                                          ),
+                                          child: SizedBox(
+                                            width: tubeWidth,
+                                            height: tubeHeight,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
                               );
                             }),
@@ -831,18 +1023,34 @@ class _GameHomePageState extends State<GameHomePage> with TickerProviderStateMix
               ],
             ),
             
-            // Animation for pouring - no changes needed
-            if (_pouringColor != null && _pourStart != null && _pourEnd != null)
+            // Animation for pouring - enhanced version
+            if (_pouringColor != null && _pourStart != null && _pourEnd != null && _rotateController.value > 0.5)
               AnimatedBuilder(
                 animation: _pourController,
                 builder: (context, child) {
                   final path = Path();
-                  path.moveTo(_pourStart!.dx, _pourStart!.dy);
                   
-                  // Create a more natural pouring arc
-                  final midY = _pourStart!.dy + (_pourEnd!.dy - _pourStart!.dy) / 2;
-                  final controlPoint1 = Offset(_pourStart!.dx, midY);
-                  final controlPoint2 = Offset(_pourEnd!.dx, midY);
+                  // The pour path now comes from the source tube at an angle
+                  final adjustedStart = Offset(
+                    _pourStart!.dx + (_liftedTubeAngle != null && _liftedTubeAngle! > 0 ? 15 : -15),
+                    _pourStart!.dy + 5
+                  );
+                  
+                  path.moveTo(adjustedStart.dx, adjustedStart.dy);
+                  
+                  // Create a more realistic pouring arc with gravity effect
+                  final midY = adjustedStart.dy + (_pourEnd!.dy - adjustedStart.dy) * 0.3; // Higher drop for more realistic curve
+                  
+                  // Control points for a more realistic water flow
+                  final controlPoint1 = Offset(
+                    adjustedStart.dx + (_pourEnd!.dx - adjustedStart.dx) * 0.2,
+                    midY - 20
+                  );
+                  
+                  final controlPoint2 = Offset(
+                    adjustedStart.dx + (_pourEnd!.dx - adjustedStart.dx) * 0.8,
+                    _pourEnd!.dy - 10
+                  );
                   
                   path.cubicTo(
                     controlPoint1.dx, 
@@ -856,11 +1064,9 @@ class _GameHomePageState extends State<GameHomePage> with TickerProviderStateMix
                   try {
                     final metrics = path.computeMetrics();
                     if (metrics.isEmpty) {
-                      // No metrics available, return empty container
                       return const SizedBox.shrink();
                     }
                     
-                    // Safely get first metric
                     PathMetric? metric;
                     for (final m in metrics) {
                       metric = m;
@@ -873,63 +1079,97 @@ class _GameHomePageState extends State<GameHomePage> with TickerProviderStateMix
                     
                     final currentDistance = metric.length * _pourController.value;
                     
-                    // Check that currentDistance is valid
                     if (currentDistance <= 0 || currentDistance > metric.length) {
-                      return const SizedBox.shrink();
-                    }
-                    
-                    final tangent = metric.getTangentForOffset(currentDistance);
-                    if (tangent == null) {
                       return const SizedBox.shrink();
                     }
                     
                     return Stack(
                       children: [
-                        // Trail effect
-                        for (int i = 0; i < 6; i++) ...[
-                          Builder(builder: (context) {
-                            final trailFactor = i / 6;
-                            final trailDistance = (currentDistance - trailFactor * metric!.length * 0.05)
-                                .clamp(0.0, metric.length);
-                            
-                            final trailTangent = metric.getTangentForOffset(trailDistance);
-                            if (trailTangent == null) return const SizedBox.shrink();
-                            
-                            return Positioned(
-                              left: trailTangent.position.dx - (3 * (1-trailFactor)),
-                              top: trailTangent.position.dy - (3 * (1-trailFactor)),
-                              child: Container(
-                                width: 6 * (1-trailFactor),
-                                height: 6 * (1-trailFactor),
-                                decoration: BoxDecoration(
-                                  color: _pouringColor!.withOpacity(0.3 * (1-trailFactor)),
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                            );
-                          }),
-                        ],
-                        
-                        // Main drop
-                        Positioned(
-                          left: tangent.position.dx - 6,
-                          top: tangent.position.dy - 6,
+                        // Water stream - main path
+                        ClipPath(
+                          clipper: WaterStreamClipper(
+                            path: path,
+                            progress: _pourController.value,
+                            width: 8.0,
+                          ),
                           child: Container(
-                            width: 12,
-                            height: 12,
-                            decoration: BoxDecoration(
-                              color: _pouringColor,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
-                                  blurRadius: 2,
-                                  offset: const Offset(0, 1),
-                                )
-                              ],
-                            ),
+                            width: MediaQuery.of(context).size.width,
+                            height: MediaQuery.of(context).size.height,
+                            color: _pouringColor!.withOpacity(0.7),
                           ),
                         ),
+                        
+                        // Water droplets for realism
+                        ...List.generate(10, (index) {
+                          if (_pourController.value < 0.1 || _pourController.value > 0.9) {
+                            return const SizedBox.shrink();
+                          }
+                          
+                          // Random offsets for droplets
+                          final random = Random();
+                          final dropletOffset = random.nextDouble() * metric!.length * 0.7;
+                          final sideOffset = (random.nextDouble() - 0.5) * 15;
+                          
+                          // Only show droplets in the middle section of the pour
+                          if (dropletOffset < currentDistance * 0.2 || 
+                              dropletOffset > currentDistance * 0.8) {
+                            return const SizedBox.shrink();
+                          }
+                          
+                          final dropletPosition = metric.getTangentForOffset(dropletOffset);
+                          if (dropletPosition == null) {
+                            return const SizedBox.shrink();
+                          }
+                          
+                          return Positioned(
+                            left: dropletPosition.position.dx + sideOffset,
+                            top: dropletPosition.position.dy + random.nextDouble() * 10,
+                            child: TweenAnimationBuilder(
+                              tween: Tween<double>(begin: 0.0, end: 1.0),
+                              duration: const Duration(milliseconds: 1000),
+                              builder: (context, value, child) {
+                                return Transform.translate(
+                                  offset: Offset(0, value * 15),
+                                  child: Opacity(
+                                    opacity: 1.0 - value,
+                                    child: Container(
+                                      width: 3 + random.nextDouble() * 4,
+                                      height: 3 + random.nextDouble() * 4,
+                                      decoration: BoxDecoration(
+                                        color: _pouringColor,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          );
+                        }),
+                        
+                        // Splash effect at destination
+                        if (_pourController.value > 0.4)
+                          Positioned(
+                            left: _pourEnd!.dx - 20,
+                            top: _pourEnd!.dy - 5,
+                            child: TweenAnimationBuilder(
+                              tween: Tween<double>(begin: 0.0, end: _pourController.value > 0.7 ? 1.0 : _pourController.value),
+                              duration: const Duration(milliseconds: 500),
+                              builder: (context, value, child) {
+                                return Opacity(
+                                  opacity: value < 0.7 ? value : 1.0 - ((value - 0.7) / 0.3),
+                                  child: Container(
+                                    width: 40 * value,
+                                    height: 10 * value,
+                                    decoration: BoxDecoration(
+                                      color: _pouringColor!.withOpacity(0.5),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
                       ],
                     );
                   } catch (e) {
@@ -1016,3 +1256,53 @@ class _GameHomePageState extends State<GameHomePage> with TickerProviderStateMix
     );
   }
 }
+
+class WaterStreamClipper extends CustomClipper<Path> {
+  final Path path;
+  final double progress;
+  final double width;
+  
+  WaterStreamClipper({
+    required this.path,
+    required this.progress,
+    this.width = 8.0,
+  });
+  
+  @override
+  Path getClip(Size size) {
+    try {
+      final metrics = path.computeMetrics();
+      if (metrics.isEmpty) {
+        return Path();
+      }
+      
+      final metric = metrics.first;
+      final pathLength = metric.length;
+      
+      // Extract a portion of the path based on progress
+      final extractPath = metric.extractPath(
+        0,
+        pathLength * progress,
+      );
+      
+      // Create a wider path by stroking
+      final expandedPath = Path();
+      
+      // Create a slightly expanded version of the path for better visibility
+      
+      expandedPath.addPath(extractPath, Offset.zero);
+      
+      return expandedPath;
+    } catch (e) {
+      print("Error in WaterStreamClipper: $e");
+      return Path(); // Return empty path on error
+    }
+  }
+  
+    @override
+    bool shouldReclip(WaterStreamClipper oldClipper) {
+      return oldClipper.progress != progress || 
+             oldClipper.path != path || 
+             oldClipper.width != width;
+    }
+  }

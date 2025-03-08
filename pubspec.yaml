@@ -1,24 +1,33 @@
-name: connections_game
-description: "A new Flutter project."
+name: colour_sort
+description: A color sorting puzzle game
+
 publish_to: 'none'
+
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.6.1
+  sdk: '>=2.18.0 <3.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.8
-  confetti: ^0.7.0  # Add this for celebration effects
+  cupertino_icons: ^1.0.5
+  audioplayers: ^4.0.0  # For sound effects
+  confetti: ^0.8.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
+  flutter_lints: ^2.0.1
 
 flutter:
   uses-material-design: true
+  
+  assets:
+    - assets/sounds/
+    - assets/images/
+
+  # Add any fonts or other assets here
 
 
 

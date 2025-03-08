@@ -1,7 +1,32 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
 allprojects {
     repositories {
         google()
         mavenCentral()
+    }
+
+    // Force all Kotlin compilations to use JVM target 11
+    plugins.withId("org.jetbrains.kotlin.jvm") {
+        tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+            kotlinOptions {
+                jvmTarget = "11"
+            }
+        }
+    }
+    
+    plugins.withId("org.jetbrains.kotlin.android") {
+        tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+            kotlinOptions {
+                jvmTarget = "11"
+            }
+        }
     }
 }
 
