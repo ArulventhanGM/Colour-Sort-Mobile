@@ -14,9 +14,6 @@ class GameController {
   // Audio manager reference for direct access
   final AudioManager _audioManager = AudioManager();
 
-  // Audio manager reference for direct access
-  final AudioManager _audioManager = AudioManager();
-
   // Game progress
   int currentLevel = 1;
   int score = 0;
@@ -31,8 +28,7 @@ class GameController {
   bool vibrationEnabled = true;
 
   // Game configuration
-  static const int maxTubes =
-      12; // Increased from 7 to allow more complex levels
+  static const int maxTubes = 12; // Increased from 7 to allow more complex levels
   static const int maxColors = 4;
 
   // Available colors for the game - extended palette for variety
@@ -53,17 +49,7 @@ class GameController {
 
   GameController() {
     _initializeAudio();
-    _initializeAudio();
     initializeLevel();
-  }
-
-  Future<void> _initializeAudio() async {
-    try {
-      await _audioManager.initialize();
-      debugPrint('Audio initialized successfully in GameController');
-    } catch (e) {
-      debugPrint('Error initializing audio: $e');
-    }
   }
 
   Future<void> _initializeAudio() async {
@@ -89,15 +75,15 @@ class GameController {
 
   List<List<Color>> _generateLevel(int level) {
     final random = Random();
-
+    
     // Calculate game parameters based on level difficulty
     final difficulty = _calculateLevelDifficulty(level);
-
+    
     int colorSets = difficulty.colorSets;
     int emptyTubes = difficulty.emptyTubes;
     int totalTubes = colorSets + emptyTubes;
     int complexityFactor = difficulty.complexityFactor;
-
+    
     // Create tubes
     List<List<Color>> newTubes = List.generate(totalTubes, (i) => []);
 
@@ -105,12 +91,12 @@ class GameController {
     List<Color> allColors = [];
     for (int c = 0; c < colorSets; c++) {
       Color selectedColor = availableColors[c % availableColors.length];
-
+      
       // For higher difficulty, slightly vary the colors to make matching harder
       if (level > 100 && random.nextDouble() < 0.3) {
         selectedColor = _slightlyVaryColor(selectedColor, random);
       }
-
+      
       for (int i = 0; i < maxColors; i++) {
         allColors.add(selectedColor);
       }
@@ -122,8 +108,7 @@ class GameController {
     // Distribute colors across tubes with increasing complexity
     if (complexityFactor > 1 && level > 5) {
       // Create more complex distributions for higher levels
-      _createComplexDistribution(
-          newTubes, allColors, colorSets, random, complexityFactor);
+      _createComplexDistribution(newTubes, allColors, colorSets, random, complexityFactor);
     } else {
       // Basic distribution for early levels
       _createBasicDistribution(newTubes, allColors, colorSets);
@@ -139,14 +124,14 @@ class GameController {
 
     return newTubes;
   }
-
+  
   /// Calculate difficulty parameters based on level number
   _LevelDifficulty _calculateLevelDifficulty(int level) {
     // Base difficulty scales with level
     int colorSets = 3;
     int emptyTubes = 2;
     int complexityFactor = 1;
-
+    
     // Increment colors as level increases
     if (level <= 10) {
       // Level 1-10: 3 colors
@@ -167,48 +152,47 @@ class GameController {
       // Level 151-200: 9-10 colors
       colorSets = 9 + (level - 150) ~/ 50;
     }
-
+    
     // Cap color sets to available distinct colors
     colorSets = colorSets.clamp(3, availableColors.length);
-
+    
     // Empty tubes increases slowly with level
     emptyTubes = 2 + (level ~/ 40);
     emptyTubes = emptyTubes.clamp(2, 4); // At most 4 empty tubes
-
+    
     // Complexity factor increases with level
     complexityFactor = 1 + (level ~/ 20);
     complexityFactor = complexityFactor.clamp(1, 5);
-
+    
     // Total tubes should not exceed max
     int totalTubes = colorSets + emptyTubes;
     if (totalTubes > maxTubes) {
       // Reduce empty tubes if needed
       emptyTubes = (maxTubes - colorSets).clamp(1, 4);
     }
-
+    
     return _LevelDifficulty(
-        colorSets: colorSets,
-        emptyTubes: emptyTubes,
-        complexityFactor: complexityFactor);
+      colorSets: colorSets,
+      emptyTubes: emptyTubes,
+      complexityFactor: complexityFactor
+    );
   }
-
+  
   /// Create a color that's a slight variation of the original for extra challenge
   Color _slightlyVaryColor(Color baseColor, Random random) {
     // Only apply to higher levels for subtle differences in shade
     int variance = 25;
-
+    
     return Color.fromARGB(
       255,
       (baseColor.red + random.nextInt(variance) - variance ~/ 2).clamp(0, 255),
-      (baseColor.green + random.nextInt(variance) - variance ~/ 2)
-          .clamp(0, 255),
+      (baseColor.green + random.nextInt(variance) - variance ~/ 2).clamp(0, 255),
       (baseColor.blue + random.nextInt(variance) - variance ~/ 2).clamp(0, 255),
     );
   }
-
+  
   /// Basic distribution - simple patterns for early levels
-  void _createBasicDistribution(
-      List<List<Color>> tubes, List<Color> allColors, int colorSets) {
+  void _createBasicDistribution(List<List<Color>> tubes, List<Color> allColors, int colorSets) {
     // Distribute colors evenly across tubes
     for (int i = 0; i < allColors.length; i++) {
       int tubeIndex = i % colorSets; // Distribute colors evenly
@@ -217,14 +201,11 @@ class GameController {
       }
     }
   }
-
+  
   /// Complex distribution - creates more challenging patterns
-  void _createComplexDistribution(
-      List<List<Color>> tubes,
-      List<Color> allColors,
-      int colorSets,
-      Random random,
-      int complexityFactor) {
+  void _createComplexDistribution(List<List<Color>> tubes, List<Color> allColors,
+      int colorSets, Random random, int complexityFactor) {
+    
     // Initial distribution - put most colors somewhere
     for (int i = 0; i < allColors.length; i++) {
       int tubeIndex = random.nextInt(colorSets);
@@ -243,32 +224,34 @@ class GameController {
         }
       }
     }
-
+    
     // Perform some swaps to increase complexity
     int swaps = complexityFactor * 3;
-
+    
     for (int i = 0; i < swaps; i++) {
       // Pick two random tubes
       int tube1 = random.nextInt(colorSets);
       int tube2 = random.nextInt(colorSets);
-
-      if (tube1 != tube2 && !tubes[tube1].isEmpty && !tubes[tube2].isEmpty) {
+      
+      if (tube1 != tube2 && 
+          !tubes[tube1].isEmpty && 
+          !tubes[tube2].isEmpty) {
+        
         // Swap random elements
         int idx1 = random.nextInt(tubes[tube1].length);
         int idx2 = random.nextInt(tubes[tube2].length);
-
+        
         Color temp = tubes[tube1][idx1];
         tubes[tube1][idx1] = tubes[tube2][idx2];
         tubes[tube2][idx2] = temp;
       }
     }
   }
-
+  
   /// Add special challenges for milestone levels
-  void _addMilestoneChallenge(
-      List<List<Color>> tubes, int level, Random random) {
+  void _addMilestoneChallenge(List<List<Color>> tubes, int level, Random random) {
     int colorSets = tubes.length - (2 + (level ~/ 40)).clamp(2, 4);
-
+    
     if (level % 50 == 0) {
       // Every 50 levels - create a tube with alternating colors for extra challenge
       int targetTube = random.nextInt(colorSets);
@@ -276,7 +259,7 @@ class GameController {
         // Create alternating pattern ABABA
         Color colorA = tubes[targetTube][0];
         Color colorB = _findDifferentColor(tubes, colorA, random);
-
+        
         tubes[targetTube] = [colorA, colorB, colorA, colorB];
       }
     } else if (level % 25 == 0) {
@@ -286,7 +269,7 @@ class GameController {
         if (tubes[targetTube].length >= 3) {
           Color mainColor = tubes[targetTube][0];
           Color differentColor = _findDifferentColor(tubes, mainColor, random);
-
+          
           List<Color> newTubeContents = List.filled(3, mainColor);
           newTubeContents.add(differentColor);
           tubes[targetTube] = newTubeContents;
@@ -294,10 +277,9 @@ class GameController {
       }
     }
   }
-
+  
   /// Find a color different from the specified color
-  Color _findDifferentColor(
-      List<List<Color>> tubes, Color colorToAvoid, Random random) {
+  Color _findDifferentColor(List<List<Color>> tubes, Color colorToAvoid, Random random) {
     // Collect all colors in use
     Set<Color> colorsInUse = {};
     for (var tube in tubes) {
@@ -305,36 +287,34 @@ class GameController {
         colorsInUse.add(color);
       }
     }
-
+    
     // Remove the color to avoid
     colorsInUse.remove(colorToAvoid);
-
+    
     if (colorsInUse.isEmpty) {
       // If no other colors, use a random color from available colors
-      return availableColors[
-          (availableColors.indexOf(colorToAvoid) + 1) % availableColors.length];
+      return availableColors[(availableColors.indexOf(colorToAvoid) + 1) % availableColors.length];
     }
-
+    
     return colorsInUse.elementAt(random.nextInt(colorsInUse.length));
   }
-
+  
   /// Make sure the puzzle isn't trivially solved
-  void _ensurePuzzleIsNotSolved(
-      List<List<Color>> tubes, int colorSets, Random random) {
+  void _ensurePuzzleIsNotSolved(List<List<Color>> tubes, int colorSets, Random random) {
     bool hasSameColorGroups = false;
-
+    
     // Check each tube
     for (int i = 0; i < colorSets; i++) {
       if (tubes[i].isEmpty) continue;
-
+      
       // Check if all colors in tube are the same
-      if (tubes[i].length == maxColors &&
+      if (tubes[i].length == maxColors && 
           tubes[i].every((color) => color == tubes[i][0])) {
         hasSameColorGroups = true;
-
+        
         // Find another tube to swap with
         int otherTube = (i + 1) % colorSets;
-
+        
         // Swap a random color
         if (tubes[otherTube].isNotEmpty) {
           int idx1 = random.nextInt(tubes[i].length);
@@ -345,7 +325,7 @@ class GameController {
         }
       }
     }
-
+    
     if (hasSameColorGroups) {
       // Double-check that we broke up all same-color groups
       _ensurePuzzleIsNotSolved(tubes, colorSets, random);
@@ -398,16 +378,16 @@ class GameController {
 
   void nextLevel() {
     currentLevel++;
-
+    
     // Bonus coins for completing levels
     int levelCompletionBonus = 5 + (currentLevel ~/ 10) * 5;
     coins += levelCompletionBonus;
-
+    
     // Reset undo moves every 10 levels
     if (currentLevel % 10 == 1) {
       undoMovesLeft = min(3 + (currentLevel ~/ 20), 10);
     }
-
+    
     initializeLevel();
   }
 
@@ -445,33 +425,23 @@ class GameController {
     if (!soundEnabled) return;
 
     try {
-
-    try {
       switch (soundName) {
         case 'select':
-          _audioManager.playSelect();
           _audioManager.playSelect();
           break;
         case 'pour':
           _audioManager.playPour();
-          _audioManager.playPour();
           break;
         case 'bubble':
-          _audioManager.playBubble();
           _audioManager.playBubble();
           break;
         case 'complete':
           _audioManager.playComplete();
-          _audioManager.playComplete();
           break;
         case 'error':
           _audioManager.playError();
-          _audioManager.playError();
           break;
       }
-    } catch (e) {
-      debugPrint('Error playing sound $soundName: $e');
-    }
     } catch (e) {
       debugPrint('Error playing sound $soundName: $e');
     }
@@ -484,7 +454,6 @@ class GameController {
 
   void setSoundEnabled(bool enabled) {
     soundEnabled = enabled;
-    _audioManager.setSoundEnabled(enabled);
     _audioManager.setSoundEnabled(enabled);
   }
 
@@ -506,7 +475,7 @@ class _LevelDifficulty {
   final int colorSets;
   final int emptyTubes;
   final int complexityFactor;
-
+  
   _LevelDifficulty({
     required this.colorSets,
     required this.emptyTubes,
