@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'game_controller.dart';
 
 class GameStats extends StatelessWidget {
   final int score;
