@@ -15,7 +15,7 @@ class TubesGrid extends StatelessWidget {
   final GameController gameController;
   final int? selectedTube;
   final int? liftedTube;
-  final int? receivingTube; // Add this parameter
+  final int? receivingTube;
   final double? liftedTubeAngle;
   final Animation<double>? liftAnimation;
   final Animation<double>? rotateAnimation;
@@ -24,14 +24,15 @@ class TubesGrid extends StatelessWidget {
   final List<SplashEffectInfo> splashEffects;
   final TubeSelectionCallback onTubeSelected;
   final PourActionCallback onPourAction;
-  final VoidCallback onAddExtraTube;
+  final VoidCallback
+      onAddExtraTube; // Keeping the parameter for backward compatibility
 
   const TubesGrid({
     Key? key,
     required this.gameController,
     required this.selectedTube,
     this.liftedTube,
-    this.receivingTube, // Add this parameter
+    this.receivingTube,
     this.liftedTubeAngle,
     this.liftAnimation,
     this.rotateAnimation,
@@ -49,13 +50,12 @@ class TubesGrid extends StatelessWidget {
       builder: (context, constraints) {
         // Calculate tube dimensions
         double tubeWidth =
-            constraints.maxWidth / (gameController.tubes.length + 2);
+            constraints.maxWidth / (gameController.tubes.length + 1);
         tubeWidth = min(tubeWidth, 60.0);
         double tubeHeight = tubeWidth * 3;
 
         // Calculate total width of all tubes including spacing
-        double totalWidth =
-            (tubeWidth + 10) * (gameController.tubes.length + 1);
+        double totalWidth = (tubeWidth + 10) * gameController.tubes.length;
         double horizontalPadding =
             max(0, (constraints.maxWidth - totalWidth) / 2);
 
@@ -73,7 +73,7 @@ class TubesGrid extends StatelessWidget {
                 spacing: 10,
                 runSpacing: 20,
                 children: [
-                  // Tubes
+                  // Tubes - only showing the game tubes, no "Add Tube" button
                   ...List.generate(gameController.tubes.length, (index) {
                     return GestureDetector(
                       key: gameController.tubeKeys[index],
@@ -144,77 +144,7 @@ class TubesGrid extends StatelessWidget {
                       ),
                     );
                   }),
-
-                  // Add Tube Button
-                  GestureDetector(
-                    onTap: onAddExtraTube,
-                    child: Container(
-                      width: tubeWidth,
-                      height: tubeHeight,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(15),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.5),
-                          width: 2,
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.add_circle_outline,
-                            color: Colors.white.withOpacity(0.9),
-                            size: 32,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '+',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white.withOpacity(0.9),
-                            ),
-                          ),
-                          Text(
-                            'Add Tube',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.white.withOpacity(0.9),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.amber[700],
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '${gameController.extraTubePrice}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                                const SizedBox(width: 2),
-                                const Icon(
-                                  Icons.monetization_on,
-                                  color: Colors.white,
-                                  size: 10,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  // "Add Tube" button removed from here
                 ],
               ),
             ),
