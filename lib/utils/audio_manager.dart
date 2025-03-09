@@ -29,57 +29,37 @@ class AudioManager {
     if (_initialized) return;
 
     try {
-      // Set global options for better performance
-      AudioPlayer.global.setGlobalAudioContext(AudioContext());
+      debugPrint('Initializing AudioManager...');
+
+      // Configure players with higher volume
+      await Future.wait([
+        _selectPlayer.setVolume(1.0),
+        _pourPlayer.setVolume(1.0),
+        _bubblePlayer.setVolume(1.0),
+        _completePlayer.setVolume(1.0),
+        _errorPlayer.setVolume(1.0),
+        _backgroundMusicPlayer.setVolume(_musicVolume),
+      ]);
 
       // Configure background music player for looping
       await _backgroundMusicPlayer.setReleaseMode(ReleaseMode.loop);
-      await _backgroundMusicPlayer.setVolume(_musicVolume);
-
-      // Set volume for all players
-      await Future.wait([
-        _selectPlayer.setVolume(0.5),
-        _pourPlayer.setVolume(0.7),
-        _bubblePlayer.setVolume(0.6),
-        _completePlayer.setVolume(0.8),
-        _errorPlayer.setVolume(0.6),
-      ]);
 
       _initialized = true;
-
-      // Pre-load sound effects to avoid first-time delay
-      await Future.wait([
-        _preloadSound(_selectPlayer, 'sounds/select.mp3'),
-        _preloadSound(_pourPlayer, 'sounds/pour.mp3'),
-        _preloadSound(_bubblePlayer, 'sounds/bubble.mp3'),
-        _preloadSound(_completePlayer, 'sounds/level_complete.mp3'),
-        _preloadSound(_errorPlayer, 'sounds/error.mp3'),
-        _preloadSound(_backgroundMusicPlayer, 'sounds/background.mp3'),
-      ]);
+      debugPrint('AudioManager initialized successfully');
 
       // Start background music
-      await playBackgroundMusic();
-
-      debugPrint('AudioManager: All sounds initialized and pre-loaded');
+      if (_musicEnabled) {
+        playBackgroundMusic();
+      }
     } catch (e) {
       debugPrint('Error initializing audio: $e');
-    }
-  }
-
-  /// Pre-load a sound for instant playback
-  Future<void> _preloadSound(AudioPlayer player, String assetPath) async {
-    try {
-      // Just load the source but don't play
-      await player.setSource(AssetSource(assetPath));
-      await player.stop(); // Ensure it's ready but not playing
-    } catch (e) {
-      debugPrint('Error preloading $assetPath: $e');
     }
   }
 
   /// Set whether sound effects are enabled
   void setSoundEnabled(bool enabled) {
     _soundEnabled = enabled;
+    debugPrint('Sound effects ${enabled ? 'enabled' : 'disabled'}');
 
     // If disabling sounds, stop any that might be playing
     if (!enabled) {
@@ -94,6 +74,8 @@ class AudioManager {
   /// Set whether background music is enabled
   void setMusicEnabled(bool enabled) {
     _musicEnabled = enabled;
+    debugPrint('Background music ${enabled ? 'enabled' : 'disabled'}');
+
     if (enabled) {
       playBackgroundMusic();
     } else {
@@ -112,24 +94,22 @@ class AudioManager {
     if (!_musicEnabled || !_initialized) return;
 
     try {
-      await _backgroundMusicPlayer.resume();
+      debugPrint('Playing background music');
+      // Always play from start to ensure it works
+      await _backgroundMusicPlayer.stop();
+      await _backgroundMusicPlayer.play(AssetSource('sounds/background.mp3'));
     } catch (e) {
       debugPrint('Error playing background music: $e');
-      // Attempt to restart the music if resuming fails
-      try {
-        await _backgroundMusicPlayer.play(AssetSource('sounds/background.mp3'));
-      } catch (e) {
-        debugPrint('Error restarting background music: $e');
-      }
     }
   }
 
   /// Play the selection sound effect
   Future<void> playSelect() async {
-    if (!_soundEnabled) return;
+    if (!_soundEnabled || !_initialized) return;
 
     try {
-      // Release previous resources to ensure sound plays every time
+      debugPrint('Playing select sound');
+      // Always play fresh for more reliable playback
       await _selectPlayer.stop();
       await _selectPlayer.play(AssetSource('sounds/select.mp3'));
     } catch (e) {
@@ -139,9 +119,10 @@ class AudioManager {
 
   /// Play the pouring sound effect
   Future<void> playPour() async {
-    if (!_soundEnabled) return;
+    if (!_soundEnabled || !_initialized) return;
 
     try {
+      debugPrint('Playing pour sound');
       await _pourPlayer.stop();
       await _pourPlayer.play(AssetSource('sounds/pour.mp3'));
     } catch (e) {
@@ -151,9 +132,10 @@ class AudioManager {
 
   /// Play the bubble sound effect
   Future<void> playBubble() async {
-    if (!_soundEnabled) return;
+    if (!_soundEnabled || !_initialized) return;
 
     try {
+      debugPrint('Playing bubble sound');
       await _bubblePlayer.stop();
       await _bubblePlayer.play(AssetSource('sounds/bubble.mp3'));
     } catch (e) {
@@ -163,9 +145,10 @@ class AudioManager {
 
   /// Play the level completion sound
   Future<void> playComplete() async {
-    if (!_soundEnabled) return;
+    if (!_soundEnabled || !_initialized) return;
 
     try {
+      debugPrint('Playing complete sound');
       await _completePlayer.stop();
       await _completePlayer.play(AssetSource('sounds/level_complete.mp3'));
     } catch (e) {
@@ -175,9 +158,10 @@ class AudioManager {
 
   /// Play the error sound
   Future<void> playError() async {
-    if (!_soundEnabled) return;
+    if (!_soundEnabled || !_initialized) return;
 
     try {
+      debugPrint('Playing error sound');
       await _errorPlayer.stop();
       await _errorPlayer.play(AssetSource('sounds/error.mp3'));
     } catch (e) {

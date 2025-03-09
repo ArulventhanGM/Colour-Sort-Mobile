@@ -162,10 +162,22 @@ class _GameHomePageState extends State<GameHomePage>
   /// Initialize audio for the game
   Future<void> _loadSoundEffects() async {
     try {
-      // Use AudioManager to handle all sounds
-      await AudioManager().initialize();
+      debugPrint('Initializing audio in GameHomePage...');
+
+      // Make sure AudioManager is properly initialized
+      final audioManager = AudioManager();
+      await audioManager.initialize();
+
+      // Play a test sound to ensure everything is working
+      if (_gameController.soundEnabled) {
+        Future.delayed(Duration(milliseconds: 500), () {
+          _gameController.playSound('select');
+        });
+      }
+
+      debugPrint('Audio initialization complete in GameHomePage');
     } catch (e) {
-      print('Error loading sound effects: $e');
+      debugPrint('Error initializing audio in GameHomePage: $e');
     }
   }
 

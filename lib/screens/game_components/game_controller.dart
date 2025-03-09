@@ -11,6 +11,9 @@ class GameController {
   Map<int, GlobalKey> tubeKeys = {};
   bool animating = false;
 
+  // Audio manager reference for direct access
+  final AudioManager _audioManager = AudioManager();
+
   // Game progress
   int currentLevel = 1;
   int score = 0;
@@ -28,7 +31,17 @@ class GameController {
   static const int maxColors = 4;
 
   GameController() {
+    _initializeAudio();
     initializeLevel();
+  }
+
+  Future<void> _initializeAudio() async {
+    try {
+      await _audioManager.initialize();
+      debugPrint('Audio initialized successfully in GameController');
+    } catch (e) {
+      debugPrint('Error initializing audio: $e');
+    }
   }
 
   void initializeLevel() {
@@ -44,8 +57,9 @@ class GameController {
   }
 
   List<List<Color>> _generateLevel(int level) {
-    // Example level generation - you can make this more sophisticated
     final random = Random();
+
+    // Fixed set of distinct colors
     final colors = [
       Colors.red,
       Colors.blue,
@@ -55,17 +69,83 @@ class GameController {
       Colors.orange,
     ];
 
-    int tubeCount = 3 + (level - 1) ~/ 2;
-    tubeCount = tubeCount.clamp(3, maxTubes);
+    // Calculate the number of color sets and tubes based on level difficulty
+    int colorSets = 3 + (level - 1) ~/ 3;
+    colorSets = colorSets.clamp(3, 6); // Limit to available colors
 
-    List<List<Color>> newTubes = List.generate(tubeCount + 2, (i) => []);
+    int tubeCount = colorSets; // One tube per color set
+    int emptyTubes = 2; // Always provide 2 empty tubes for maneuvering
 
-    // Fill tubes with colors
-    for (int i = 0; i < tubeCount; i++) {
-      for (int j = 0; j < maxColors; j++) {
-        newTubes[i].add(colors[random.nextInt(colors.length)]);
+    // Total tubes including empties
+    int totalTubes = tubeCount + emptyTubes;
+    totalTubes = totalTubes.clamp(3, maxTubes); // Apply max tube limit
+
+    // Create tubes
+    List<List<Color>> newTubes = List.generate(totalTubes, (i) => []);
+
+    // Create a flat list of all colors needed (maxColors of each color type)
+    List<Color> allColors = [];
+    for (int c = 0; c < colorSets; c++) {
+      for (int i = 0; i < maxColors; i++) {
+        allColors.add(colors[c]);
       }
     }
+
+    // Shuffle all colors to randomize their positions
+    allColors.shuffle(random);
+
+    // Distribute colors evenly across tubes (excluding empty tubes)
+    for (int i = 0; i < allColors.length; i++) {
+      int tubeIndex = i % tubeCount; // Distribute colors evenly
+      if (newTubes[tubeIndex].length < maxColors) {
+        newTubes[tubeIndex].add(allColors[i]);
+      }
+    }
+
+    // Validate all tubes have proper number of colors
+    for (int i = 0; i < tubeCount; i++) {
+      if (newTubes[i].length != maxColors) {
+        debugPrint(
+            'Warning: Tube $i has ${newTubes[i].length} colors instead of $maxColors');
+      }
+    }
+
+    // Ensure the puzzle is not trivially solved
+    bool hasSameColorGroups = false;
+    do {
+      hasSameColorGroups = false;
+
+      // Check each tube
+      for (int i = 0; i < tubeCount; i++) {
+        if (newTubes[i].isEmpty) continue;
+
+        // Count consecutive same colors from the top
+        Color topColor = newTubes[i][0];
+        int sameColorCount = 1;
+        for (int j = 1; j < newTubes[i].length; j++) {
+          if (newTubes[i][j] == topColor) {
+            sameColorCount++;
+          } else {
+            break;
+          }
+        }
+
+        // If tube has all same colors, shuffle it with another tube
+        if (sameColorCount == maxColors) {
+          hasSameColorGroups = true;
+
+          // Find another tube to swap with
+          int otherTube = (i + 1) % tubeCount;
+
+          // Swap a random color
+          int idx1 = random.nextInt(newTubes[i].length);
+          int idx2 = random.nextInt(newTubes[otherTube].length);
+          Color temp = newTubes[i][idx1];
+          newTubes[i][idx1] = newTubes[otherTube][idx2];
+          newTubes[otherTube][idx2] = temp;
+        }
+      }
+    } while (hasSameColorGroups);
 
     return newTubes;
   }
@@ -151,25 +231,28 @@ class GameController {
 
   void playSound(String soundName) {
     if (!soundEnabled) return;
-    AudioManager().initialize().then((_) {
+
+    try {
       switch (soundName) {
         case 'select':
-          AudioManager().playSelect();
+          _audioManager.playSelect();
           break;
         case 'pour':
-          AudioManager().playPour();
+          _audioManager.playPour();
           break;
         case 'bubble':
-          AudioManager().playBubble();
+          _audioManager.playBubble();
           break;
         case 'complete':
-          AudioManager().playComplete();
+          _audioManager.playComplete();
           break;
         case 'error':
-          AudioManager().playError();
+          _audioManager.playError();
           break;
       }
-    });
+    } catch (e) {
+      debugPrint('Error playing sound $soundName: $e');
+    }
   }
 
   void vibrateDevice() {
@@ -179,6 +262,7 @@ class GameController {
 
   void setSoundEnabled(bool enabled) {
     soundEnabled = enabled;
+    _audioManager.setSoundEnabled(enabled);
   }
 
   void setVibrationEnabled(bool enabled) {
