@@ -14,6 +14,9 @@ class GameController {
   // Audio manager reference for direct access
   final AudioManager _audioManager = AudioManager();
 
+  // Audio manager reference for direct access
+  final AudioManager _audioManager = AudioManager();
+
   // Game progress
   int currentLevel = 1;
   int score = 0;
@@ -50,7 +53,17 @@ class GameController {
 
   GameController() {
     _initializeAudio();
+    _initializeAudio();
     initializeLevel();
+  }
+
+  Future<void> _initializeAudio() async {
+    try {
+      await _audioManager.initialize();
+      debugPrint('Audio initialized successfully in GameController');
+    } catch (e) {
+      debugPrint('Error initializing audio: $e');
+    }
   }
 
   Future<void> _initializeAudio() async {
@@ -432,23 +445,33 @@ class GameController {
     if (!soundEnabled) return;
 
     try {
+
+    try {
       switch (soundName) {
         case 'select':
+          _audioManager.playSelect();
           _audioManager.playSelect();
           break;
         case 'pour':
           _audioManager.playPour();
+          _audioManager.playPour();
           break;
         case 'bubble':
+          _audioManager.playBubble();
           _audioManager.playBubble();
           break;
         case 'complete':
           _audioManager.playComplete();
+          _audioManager.playComplete();
           break;
         case 'error':
           _audioManager.playError();
+          _audioManager.playError();
           break;
       }
+    } catch (e) {
+      debugPrint('Error playing sound $soundName: $e');
+    }
     } catch (e) {
       debugPrint('Error playing sound $soundName: $e');
     }
@@ -461,6 +484,7 @@ class GameController {
 
   void setSoundEnabled(bool enabled) {
     soundEnabled = enabled;
+    _audioManager.setSoundEnabled(enabled);
     _audioManager.setSoundEnabled(enabled);
   }
 
