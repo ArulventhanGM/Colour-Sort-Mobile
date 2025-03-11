@@ -14,6 +14,10 @@ import 'game_components/settings_dialog.dart';
 import 'game_components/store_dialog.dart';
 import 'game_components/completion_dialog.dart';
 import 'game_components/background_pattern.dart';
+import 'game_components/achievement_dialog.dart';
+import 'game_components/daily_reward_dialog.dart';
+import 'game_components/hint_arrow_painter.dart';
+import 'game_components/hint_manager.dart';
 
 import '../widgets/splash_effect.dart';
 
@@ -24,58 +28,6 @@ class GameHomePage extends StatefulWidget {
   State<GameHomePage> createState() => _GameHomePageState();
 }
 
-class HintArrowPainter extends CustomPainter {
-  final Offset startPoint;
-  final Offset endPoint;
-  final Animation<double> progress;
-
-  HintArrowPainter({
-    required this.startPoint,
-    required this.endPoint,
-    required this.progress,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.amber
-      ..strokeWidth = 5
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final path = Path();
-
-    // Calculate current point based on animation progress
-    final currentPoint = Offset.lerp(startPoint, endPoint, progress.value)!;
-
-    // Draw the line
-    path.moveTo(startPoint.dx, startPoint.dy);
-    path.lineTo(currentPoint.dx, currentPoint.dy);
-
-    // Draw arrow head if we're near the end
-    if (progress.value > 0.9) {
-      double angle =
-          math.atan2(endPoint.dy - startPoint.dy, endPoint.dx - startPoint.dx);
-      double arrowSize = 20.0;
-
-      path.moveTo(
-        endPoint.dx - arrowSize * math.cos(angle - math.pi / 6),
-        endPoint.dy - arrowSize * math.sin(angle - math.pi / 6),
-      );
-      path.lineTo(endPoint.dx, endPoint.dy);
-      path.lineTo(
-        endPoint.dx - arrowSize * math.cos(angle + math.pi / 6),
-        endPoint.dy - arrowSize * math.sin(angle + math.pi / 6),
-      );
-    }
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(HintArrowPainter oldDelegate) => true;
-}
-
 class _GameHomePageState extends State<GameHomePage>
     with TickerProviderStateMixin {
   // Game state and logic controller
@@ -84,6 +36,7 @@ class _GameHomePageState extends State<GameHomePage>
   // UI state variables
   int? _selectedTube;
   bool _animating = false;
+  bool _achievementsChecked = false; // Flag to track if achievements checked
 
   // Animation controllers
   late AnimationController _popupController;
@@ -91,6 +44,7 @@ class _GameHomePageState extends State<GameHomePage>
   late AnimationController _liftController;
   late AnimationController _rotateController;
   late AnimationController _dropController;
+  late AnimationController _hintController; // New animation controller for hints
 
   // Animation tracking variables
   Color? _pouringColor;
@@ -104,6 +58,12 @@ class _GameHomePageState extends State<GameHomePage>
 
   // Splash effects for visual feedback
   final List<SplashEffectInfo> _splashEffects = [];
+
+  // Hint animation state
+  bool _showingHintAnimation = false;
+  Offset? _hintFromPosition;
+  Offset? _hintToPosition;
+  HintMove? _currentHintMove;
 
   @override
   void initState() {
@@ -145,8 +105,27 @@ class _GameHomePageState extends State<GameHomePage>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
+    
+    // Initialize hint animation controller
+    _hintController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        // Loop the animation continuously while hint is showing
+        if (_showingHintAnimation) {
+          _hintController.reset();
+          _hintController.forward();
+        }
+      }
+    });
 
     _loadSoundEffects();
+
+    // Check for daily rewards on startup
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkDailyReward();
+    });
   }
 
   @override
@@ -156,6 +135,7 @@ class _GameHomePageState extends State<GameHomePage>
     _liftController.dispose();
     _rotateController.dispose();
     _dropController.dispose();
+    _hintController.dispose();
     super.dispose();
   }
 
@@ -178,6 +158,56 @@ class _GameHomePageState extends State<GameHomePage>
       debugPrint('Audio initialization complete in GameHomePage');
     } catch (e) {
       debugPrint('Error initializing audio in GameHomePage: $e');
+    }
+  }
+
+  /// Check for daily login rewards
+  void _checkDailyReward() {
+    final dailyReward = _gameController.dailyLoginReward;
+
+    if (dailyReward != null) {
+      // Show the daily reward dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => DailyRewardDialog(
+          gameController: _gameController,
+          reward: dailyReward,
+        ),
+      );
+    }
+  }
+
+  /// Check for pending achievements
+  void _checkAchievements() {
+    if (_achievementsChecked) return;
+
+    if (_gameController.pendingAchievements.isNotEmpty) {
+      // Mark as checked so we don't show multiple dialogs
+      _achievementsChecked = true;
+
+      // Show achievement dialog for the first achievement
+      final achievement = _gameController.pendingAchievements.first;
+
+      // Show after a short delay to let level completion dialog close
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AchievementDialog(
+              gameController: _gameController,
+              achievement: achievement,
+            ),
+          ).then((_) {
+            // Check if there are more achievements to show
+            if (_gameController.pendingAchievements.isNotEmpty) {
+              _achievementsChecked = false;
+              _checkAchievements();
+            }
+          });
+        }
+      });
     }
   }
 
@@ -449,6 +479,9 @@ class _GameHomePageState extends State<GameHomePage>
 
   /// Show completion popup when level is finished
   void _showCompletionPopup() {
+    // Reset achievement check flag for next level
+    _achievementsChecked = false;
+
     showGeneralDialog(
       context: context,
       pageBuilder: (context, animation, secondaryAnimation) {
@@ -462,6 +495,9 @@ class _GameHomePageState extends State<GameHomePage>
             onNextLevel: () {
               setState(() {
                 _gameController.nextLevel();
+
+                // Check for achievement unlocks after level completion
+                _checkAchievements();
               });
             },
           ),
@@ -506,10 +542,15 @@ class _GameHomePageState extends State<GameHomePage>
           });
         },
         onHintPurchase: () {
-          // TODO: Implement hint purchase
+          setState(() {
+            _gameController.hints += 5;
+            _gameController.coins -= 50;
+          });
         },
         onCoinPurchase: () {
-          // TODO: Implement coin purchase
+          setState(() {
+            _gameController.coins += 100;
+          });
         },
       ),
     );
@@ -517,100 +558,125 @@ class _GameHomePageState extends State<GameHomePage>
 
   /// Show hint for the next best move
   void _showHint() {
-    if (_gameController.coins < 10) {
-      _showErrorPopup("Not enough coins! You need 10 coins for a hint.");
+    // First check if we have any hints left
+    if (_gameController.hints <= 0) {
+      _showHintUnavailableDialog();
       return;
     }
 
-    // Find a valid move to suggest
-    int? fromTube;
-    int? toTube;
-
-    // Check each tube combination for a valid move
-    for (int i = 0; i < _gameController.tubes.length; i++) {
-      if (_gameController.tubes[i].isEmpty) continue;
-
-      for (int j = 0; j < _gameController.tubes.length; j++) {
-        if (i == j) continue;
-
-        if (_gameController.canPour(i, j)) {
-          fromTube = i;
-          toTube = j;
-          break;
-        }
-      }
-      if (fromTube != null) break;
+    // Get a hint move from the game controller
+    final hintMove = _gameController.useHint();
+    
+    if (hintMove == null) {
+      _showErrorPopup("No valid moves found! Try adding a tube or restarting.");
+      return;
     }
 
-    if (fromTube != null && toTube != null) {
-      // Deduct coins for using hint
-      setState(() {
-        _gameController.coins -= 10;
-      });
+    // Find the source and destination tube positions for the animation
+    final fromTube = hintMove.fromTube;
+    final toTube = hintMove.toTube;
+    
+    _currentHintMove = hintMove;
 
-      // Highlight the suggested move
-      final sourceTubeContext =
-          _gameController.tubeKeys[fromTube]!.currentContext;
-      final targetTubeContext =
-          _gameController.tubeKeys[toTube]!.currentContext;
-
-      if (sourceTubeContext != null && targetTubeContext != null) {
-        final sourceTubeRenderBox =
-            sourceTubeContext.findRenderObject() as RenderBox;
-        final targetTubeRenderBox =
-            targetTubeContext.findRenderObject() as RenderBox;
-
-        final sourcePosition = sourceTubeRenderBox.localToGlobal(Offset.zero);
-        final targetPosition = targetTubeRenderBox.localToGlobal(Offset.zero);
-
-        // Show hint animation
-        _showHintAnimation(
-          sourcePosition.translate(sourceTubeRenderBox.size.width / 2,
-              sourceTubeRenderBox.size.height / 2),
-          targetPosition.translate(targetTubeRenderBox.size.width / 2,
-              targetTubeRenderBox.size.height / 2),
-        );
-      }
-    } else {
-      _showErrorPopup("No valid moves available!");
+    // Get positions of the tubes for the animation
+    if (_gameController.tubeKeys[fromTube] == null || 
+        _gameController.tubeKeys[toTube] == null) {
+      _showErrorPopup("Cannot show hint right now. Try again later.");
+      return;
     }
+
+    final sourceContext = _gameController.tubeKeys[fromTube]!.currentContext;
+    final targetContext = _gameController.tubeKeys[toTube]!.currentContext;
+
+    if (sourceContext == null || targetContext == null) {
+      _showErrorPopup("Cannot show hint right now. Try again later.");
+      return;
+    }
+
+    final sourceRenderBox = sourceContext.findRenderObject() as RenderBox?;
+    final targetRenderBox = targetContext.findRenderObject() as RenderBox?;
+
+    if (sourceRenderBox == null || targetRenderBox == null) {
+      _showErrorPopup("Cannot show hint right now. Try again later.");
+      return;
+    }
+
+    // Calculate center points of tubes for arrow
+    final sourcePosition = sourceRenderBox.localToGlobal(Offset.zero);
+    final targetPosition = targetRenderBox.localToGlobal(Offset.zero);
+
+    final sourceCenter = Offset(
+      sourcePosition.dx + sourceRenderBox.size.width / 2,
+      sourcePosition.dy + sourceRenderBox.size.height * 0.25,
+    );
+
+    final targetCenter = Offset(
+      targetPosition.dx + targetRenderBox.size.width / 2,
+      targetPosition.dy + targetRenderBox.size.height * 0.25,
+    );
+
+    // Store these positions for the hint animation
+    _hintFromPosition = sourceCenter;
+    _hintToPosition = targetCenter;
+
+    // Show hint animation
+    setState(() {
+      _showingHintAnimation = true;
+      _gameController.playSound('select');
+    });
+
+    // Start the animation
+    _hintController.forward(from: 0);
+
+    // Apply highlights to the tubes
+    _highlightHintTubes(fromTube, toTube);
+
+    // Hide the hint automatically after some time
+    Future.delayed(const Duration(seconds: 5), () {
+      if (mounted) {
+        setState(() {
+          _showingHintAnimation = false;
+          _hintFromPosition = null;
+          _hintToPosition = null;
+          _currentHintMove = null;
+        });
+      }
+    });
   }
 
-  void _showHintAnimation(Offset start, Offset end) {
-    showGeneralDialog(
+  /// Show dialog when hints are unavailable
+  void _showHintUnavailableDialog() {
+    showDialog(
       context: context,
-      pageBuilder: (context, animation, secondaryAnimation) {
-        return Stack(
-          children: [
-            Positioned.fill(
-              child: GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  color: Colors.black26,
-                ),
-              ),
-            ),
-            Positioned(
-              left: 0,
-              top: 0,
-              right: 0,
-              bottom: 0,
-              child: CustomPaint(
-                painter: HintArrowPainter(
-                  startPoint: start,
-                  endPoint: end,
-                  progress: animation,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-      transitionDuration: const Duration(milliseconds: 300),
-      barrierDismissible: true,
-      barrierLabel: 'Hint',
-      barrierColor: Colors.transparent,
+      builder: (context) => AlertDialog(
+        title: const Text('No Hints Left!'),
+        content: const Text(
+          'You have no hints remaining.\n\nYou can earn more hints by:\n'
+          '• Completing daily login rewards\n'
+          '• Purchasing them in the store\n'
+          '• Completing certain achievements',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _showStore();
+            },
+            child: const Text('Go to Store'),
+          ),
+        ],
+      ),
     );
+  }
+
+  /// Highlight the tubes involved in a hint
+  void _highlightHintTubes(int fromTube, int toTube) {
+    // This method would add highlighting effects to the tubes
+    // (we'll leave this empty for now since the arrow visual is the main hint)
   }
 
   void _removeSplashEffect(SplashEffectInfo effect) {
@@ -698,6 +764,21 @@ class _GameHomePageState extends State<GameHomePage>
                           onComplete: () => _removeSplashEffect(effect),
                           isColorMixing: effect.isColorMixing,
                         )),
+                        
+                    // Hint arrow animation overlay
+                    if (_showingHintAnimation && 
+                        _hintFromPosition != null && 
+                        _hintToPosition != null)
+                      CustomPaint(
+                        painter: HintArrowPainter(
+                          startPoint: _hintFromPosition!,
+                          endPoint: _hintToPosition!,
+                          animation: _hintController,
+                          arrowColor: Colors.amber.shade600,
+                          arrowWidth: 6.0,
+                        ),
+                        size: Size.infinite,
+                      ),
                   ],
                 ),
               ),
