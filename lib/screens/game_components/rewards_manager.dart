@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 
 /// Class that manages all game rewards and incentives
 class RewardsManager {
@@ -14,56 +13,56 @@ class RewardsManager {
 
   // Achievement definitions
   static final List<Achievement> achievements = [
-    Achievement(
+    const Achievement(
       id: 'perfect_level',
       title: 'Perfect Solver',
       description: 'Complete a level using the optimal number of moves',
       coins: 20,
       requiredCount: 1,
     ),
-    Achievement(
+    const Achievement(
       id: 'speed_demon',
       title: 'Speed Demon',
       description: 'Complete a level in record time',
       coins: 25,
       requiredCount: 1,
     ),
-    Achievement(
+    const Achievement(
       id: 'perfect_10',
       title: 'Perfect 10',
       description: 'Complete 10 levels with perfect moves',
       coins: 50,
       requiredCount: 10,
     ),
-    Achievement(
+    const Achievement(
       id: 'level_25',
       title: 'Getting Started',
       description: 'Reach level 25',
       coins: 100,
       requiredCount: 1,
     ),
-    Achievement(
+    const Achievement(
       id: 'level_50',
       title: 'Halfway There',
       description: 'Reach level 50',
       coins: 200,
       requiredCount: 1,
     ),
-    Achievement(
+    const Achievement(
       id: 'level_100',
       title: 'Century Club',
       description: 'Reach level 100',
       coins: 500,
       requiredCount: 1,
     ),
-    Achievement(
+    const Achievement(
       id: 'streak_7',
       title: 'Week Warrior',
       description: 'Login for 7 days in a row',
       coins: 100,
       requiredCount: 7,
     ),
-    Achievement(
+    const Achievement(
       id: 'streak_30',
       title: 'Month Master',
       description: 'Login for 30 days in a row',

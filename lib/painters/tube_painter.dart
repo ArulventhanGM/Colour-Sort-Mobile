@@ -155,7 +155,7 @@ class TubePainter extends CustomPainter {
 
         // Create a more dynamic wave with time-based animation
         final waveHeight = isSelected ? 4.0 : 2.5; // Bigger waves when selected
-        final waveCount = 4; // More waves for more detail
+        const waveCount = 4; // More waves for more detail
 
         for (int w = 0; w <= waveCount * 2; w++) {
           final waveX = offsetX + (tubeWidth / (waveCount * 2)) * w;

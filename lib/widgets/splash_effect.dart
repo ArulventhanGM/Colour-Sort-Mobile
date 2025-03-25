@@ -77,7 +77,7 @@ class _SplashPainter extends CustomPainter {
 
     if (isColorMixing) {
       // Add particles for color mixing effect
-      final particleCount = 8;
+      const particleCount = 8;
       final random = Random(42); // Fixed seed for consistent effect
 
       for (int i = 0; i < particleCount; i++) {

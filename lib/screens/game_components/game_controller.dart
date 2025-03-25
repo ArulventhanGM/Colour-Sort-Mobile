@@ -25,7 +25,7 @@ class GameController {
   int coinsEarned = 0;
   int undoMovesLeft = 3;
   int hints = 3;
-  int _maxLevel = 200; // Maximum number of levels
+  final int _maxLevel = 200; // Maximum number of levels
 
   // Hint system
   HintMove? _currentHint;
@@ -404,7 +404,7 @@ class GameController {
       int tube1 = random.nextInt(colorSets);
       int tube2 = random.nextInt(colorSets);
 
-      if (tube1 != tube2 && !tubes[tube1].isEmpty && !tubes[tube2].isEmpty) {
+      if (tube1 != tube2 && tubes[tube1].isNotEmpty && tubes[tube2].isNotEmpty) {
         // Swap random elements
         int idx1 = random.nextInt(tubes[tube1].length);
         int idx2 = random.nextInt(tubes[tube2].length);
@@ -651,7 +651,7 @@ class GameController {
     // Find the achievement
     final achievement = pendingAchievements.firstWhere(
       (a) => a.id == achievementId,
-      orElse: () => Achievement(
+      orElse: () => const Achievement(
           id: '', title: '', description: '', coins: 0, requiredCount: 0),
     );
 
@@ -776,13 +776,8 @@ class GameController {
     _showingHint = false;
     _lastHintTime = null;
   }
-
-  bool useHint() {
-    if (hints <= 0) return false;
-    hints--;
-    _saveGameState();
-    return true;
-  }
+  
+  
 
   void updateStars() {
     // Just a placeholder now - actual calculation happens in calculateLevelRewards

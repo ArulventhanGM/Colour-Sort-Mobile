@@ -12,9 +12,10 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.2
-  audioplayers: ^4.1.0  # Downgraded from ^5.0.0 to ^4.1.0
+  audioplayers: ^4.1.0
   confetti: ^0.8.0
   shared_preferences: ^2.2.2
+  just_audio: ^0.9.46
 
 dev_dependencies:
   flutter_test:
@@ -26,7 +27,6 @@ flutter:
   
   assets:
     - assets/sounds/
-    - assets/images/
 
 
 
