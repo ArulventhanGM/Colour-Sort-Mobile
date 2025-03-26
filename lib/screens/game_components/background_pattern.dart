@@ -1,50 +1,80 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../services/theme_service.dart';
 
+/// Animated background pattern for the game
 class BackgroundPattern extends StatelessWidget {
-  const BackgroundPattern({Key? key}) : super(key: key);
+  const BackgroundPattern({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: BackgroundPatternPainter(),
-      child: Container(),
+    final themeService = Provider.of<ThemeService>(context);
+    final currentTheme = themeService.currentTheme;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 500),
+      decoration: BoxDecoration(
+        gradient: currentTheme.backgroundGradient,
+      ),
+      child: CustomPaint(
+        painter: _BackgroundPatternPainter(themeColor: currentTheme.primaryColor),
+        size: Size.infinite,
+      ),
     );
   }
 }
 
-class BackgroundPatternPainter extends CustomPainter {
+class _BackgroundPatternPainter extends CustomPainter {
+  final Color themeColor;
+
+  _BackgroundPatternPainter({required this.themeColor});
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.blue.shade100.withOpacity(0.3)
-      ..strokeWidth = 1.0
-      ..style = PaintingStyle.stroke;
+      ..color = themeColor.withOpacity(0.05)
+      ..style = PaintingStyle.fill;
 
-    const spacing = 30.0;
-    const dotSize = 2.0;
-
-    for (double x = 0; x < size.width; x += spacing) {
-      for (double y = 0; y < size.height; y += spacing) {
-        canvas.drawCircle(Offset(x, y), dotSize, paint);
-      }
+    // Draw background pattern - circles
+    for (int i = 0; i < 20; i++) {
+      final radius = (size.width / 10) * (i % 3 + 1);
+      canvas.drawCircle(
+        Offset(
+          size.width * 0.1 + (i % 5) * size.width * 0.2,
+          (i ~/ 5) * size.height * 0.25,
+        ),
+        radius,
+        paint,
+      );
     }
-
-    // Add subtle diagonal lines
-    final linePaint = Paint()
-      ..color = Colors.blue.shade100.withOpacity(0.2)
-      ..strokeWidth = 0.5;
-
-    for (double offset = 0;
-        offset < size.width + size.height;
-        offset += spacing * 2) {
+    
+    // Add a subtle grid pattern
+    final gridPaint = Paint()
+      ..color = themeColor.withOpacity(0.03)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+      
+    final gridSize = 30.0;
+    
+    for (double x = 0; x < size.width; x += gridSize) {
       canvas.drawLine(
-        Offset(offset, 0),
-        Offset(0, offset),
-        linePaint,
+        Offset(x, 0),
+        Offset(x, size.height),
+        gridPaint,
+      );
+    }
+    
+    for (double y = 0; y < size.height; y += gridSize) {
+      canvas.drawLine(
+        Offset(0, y),
+        Offset(size.width, y),
+        gridPaint,
       );
     }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(_BackgroundPatternPainter oldDelegate) {
+    return oldDelegate.themeColor != themeColor;
+  }
 }

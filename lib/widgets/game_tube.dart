@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
 import '../painters/tube_painter.dart';
+import 'package:provider/provider.dart';
+import '../services/theme_service.dart';
 
 class GameTube extends StatefulWidget {
   final List<Color> colors;
@@ -123,6 +125,12 @@ class _GameTubeState extends State<GameTube>
 
   @override
   Widget build(BuildContext context) {
+    // Get theme colors from the theme service
+    final themeService = Provider.of<ThemeService>(context);
+    final currentTheme = themeService.currentTheme;
+    final tubeOutlineColor = currentTheme.tubeOutlineColor;
+    final accentColor = currentTheme.accentColor;
+
     if (!widget.isAnimating) {
       return AnimatedBuilder(
         animation: _idleAnimController,
@@ -148,6 +156,8 @@ class _GameTubeState extends State<GameTube>
                         ? _liquidFillAnimation.value
                         : 0.0,
                     isReceivingLiquid: widget.isReceivingLiquid,
+                    tubeOutlineColor: tubeOutlineColor,
+                    accentColor: accentColor,
                   ),
                   child: SizedBox(
                     width: widget.width,
@@ -216,6 +226,8 @@ class _GameTubeState extends State<GameTube>
                 liquidFillOffset:
                     widget.isReceivingLiquid ? _liquidFillAnimation.value : 0.0,
                 isReceivingLiquid: widget.isReceivingLiquid,
+                tubeOutlineColor: tubeOutlineColor,
+                accentColor: accentColor,
               ),
               child: SizedBox(
                 width: widget.width,

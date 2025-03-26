@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../services/theme_service.dart';
+import '../../widgets/control_button.dart';
 
+/// Bottom controls bar for game actions
 class GameControls extends StatelessWidget {
   final VoidCallback onUndo;
   final VoidCallback onReset;
@@ -8,24 +12,28 @@ class GameControls extends StatelessWidget {
   final bool canAddTube;
 
   const GameControls({
-    Key? key,
+    super.key,
     required this.onUndo,
     required this.onReset,
     required this.onAddTube,
     required this.canUndo,
     required this.canAddTube,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
+    final themeService = Provider.of<ThemeService>(context);
+    final currentTheme = themeService.currentTheme;
+    
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 8.0),
       decoration: BoxDecoration(
-        color: Colors.blue.shade50,
+        color: currentTheme.headerColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 5,
+            spreadRadius: 1,
             offset: const Offset(0, -2),
           ),
         ],
@@ -33,88 +41,38 @@ class GameControls extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildControlButton(
-            onPressed: canUndo ? onUndo : null,
-            icon: Icons.undo_rounded,
+          // Undo button
+          ControlButton(
+            icon: Icons.undo,
             label: 'Undo',
-            color: Colors.orange,
+            onPressed: canUndo ? onUndo : null,
+            primaryColor: currentTheme.buttonColor,
+            accentColor: currentTheme.accentColor,
+            size: 50,
+            isEnabled: canUndo,
           ),
-          _buildControlButton(
-            onPressed: onReset,
-            icon: Icons.refresh_rounded,
+          
+          // Reset button
+          ControlButton(
+            icon: Icons.refresh,
             label: 'Reset',
-            color: Colors.red,
+            onPressed: onReset,
+            primaryColor: currentTheme.buttonColor,
+            accentColor: currentTheme.accentColor,
+            size: 50,
           ),
-          _buildControlButton(
-            onPressed: canAddTube ? onAddTube : null,
-            icon: Icons.add_circle_outline_rounded,
+          
+          // Add tube button
+          ControlButton(
+            icon: Icons.add_circle_outline,
             label: 'Add Tube',
-            color: Colors.green,
+            onPressed: canAddTube ? onAddTube : null,
+            primaryColor: currentTheme.buttonColor,
+            accentColor: currentTheme.accentColor,
+            size: 50,
+            isEnabled: canAddTube,
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildControlButton({
-    required VoidCallback? onPressed,
-    required IconData icon,
-    required String label,
-    required MaterialColor color,
-  }) {
-    final isEnabled = onPressed != null;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      isEnabled ? color.shade300 : Colors.grey.shade300,
-                      isEnabled ? color.shade400 : Colors.grey.shade400,
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: isEnabled
-                      ? [
-                          BoxShadow(
-                            color: color.withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ]
-                      : null,
-                ),
-                child: Icon(
-                  icon,
-                  color: Colors.white,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  color: isEnabled ? color.shade700 : Colors.grey.shade600,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

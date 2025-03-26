@@ -1,177 +1,118 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../services/theme_service.dart';
+import '../../models/game_theme.dart';
 
+/// Widget displaying game statistics
 class GameStats extends StatelessWidget {
   final int score;
   final int movesCount;
   final int coinsEarned;
 
   const GameStats({
-    Key? key,
+    super.key,
     required this.score,
     required this.movesCount,
     required this.coinsEarned,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
+    final themeService = Provider.of<ThemeService>(context);
+    final currentTheme = themeService.currentTheme;
+    
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _buildStatItem(
-            icon: Icons.star_rounded,
-            value: score,
-            label: 'Score',
-            color: Colors.amber,
-          ),
-          _buildStatItem(
-            icon: Icons.swap_horiz_rounded,
-            value: movesCount,
-            label: 'Moves',
-            color: Colors.blue,
-          ),
-          _buildCoinsEarned(coinsEarned),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatItem({
-    required IconData icon,
-    required int value,
-    required String label,
-    required MaterialColor color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            color.shade300,
-            color.shade400,
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
+        color: currentTheme.secondaryColor.withOpacity(0.8),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.3),
-            blurRadius: 8,
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 3,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          Icon(
-            icon,
-            color: Colors.white,
-            size: 24,
+          // Score
+          _StatItem(
+            label: 'Score',
+            value: score.toString(),
+            icon: Icons.stars,
+            theme: currentTheme,
           ),
-          const SizedBox(height: 4),
-          Text(
-            value.toString(),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+          
+          // Moves
+          _StatItem(
+            label: 'Moves',
+            value: movesCount.toString(),
+            icon: Icons.swap_horiz,
+            theme: currentTheme,
           ),
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.8),
-              fontSize: 12,
-            ),
+          
+          // Coins earned
+          _StatItem(
+            label: 'Coins',
+            value: '+$coinsEarned',
+            icon: Icons.monetization_on,
+            theme: currentTheme,
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildCoinsEarned(int coins) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 800),
-      builder: (context, value, child) {
-        return Transform.scale(
-          scale: 0.8 + (value * 0.2),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.amber.shade300,
-                  Colors.amber.shade400,
-                ],
+/// Individual stat item
+class _StatItem extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final GameTheme theme;
+
+  const _StatItem({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: theme.accentColor,
+              size: 16,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.9),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
               ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.amber.withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-                BoxShadow(
-                  color: Colors.amber.withOpacity(0.1),
-                  blurRadius: 12,
-                  spreadRadius: 4,
-                  offset: const Offset(0, 4),
-                ),
-              ],
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ShaderMask(
-                  shaderCallback: (bounds) => LinearGradient(
-                    colors: [
-                      Colors.amber.shade200,
-                      Colors.amber.shade50,
-                      Colors.amber.shade200,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ).createShader(bounds),
-                  child: const Icon(
-                    Icons.monetization_on_rounded,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '+$coins',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    shadows: [
-                      Shadow(
-                        color: Colors.amber.shade700.withOpacity(0.5),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                ),
-                Text(
-                  'Coins',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
           ),
-        );
-      },
+        ),
+      ],
     );
   }
 }
