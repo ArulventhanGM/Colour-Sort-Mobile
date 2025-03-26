@@ -17,6 +17,7 @@ import 'game_components/tube_animation_controller.dart';
 import 'game_components/hint_animation_controller.dart';
 import 'game_components/splash_effect_manager.dart';
 import 'game_components/dialog_manager.dart';
+import 'game_components/tube_completion_manager.dart';
 
 import '../widgets/splash_effect.dart';
 
@@ -36,6 +37,7 @@ class _GameHomePageState extends State<GameHomePage>
   late BurstCelebrationController _burstController;
   late TubeAnimationController _tubeAnimationController;
   late HintAnimationController _hintAnimationController;
+  late TubeCompletionManager _tubeCompletionManager;
 
   // UI state variables
   int? _selectedTube;
@@ -132,6 +134,10 @@ class _GameHomePageState extends State<GameHomePage>
       hintController: _hintController,
       showErrorPopup: _showErrorPopup,
     );
+    
+    _tubeCompletionManager = TubeCompletionManager(
+      addSplashEffect: _splashEffectManager.addSplashEffect,
+    );
 
     _loadSoundEffects();
 
@@ -211,19 +217,28 @@ class _GameHomePageState extends State<GameHomePage>
       setState,
     );
     
-    // If the pour was successful and completed the game
-    if (success && _gameController.isGameComplete()) {
-      _gameController.playSound('complete');
+    if (success) {
+      // Check for tube completions after a successful pour
+      _tubeCompletionManager.celebrateTubeCompletion(
+        _gameController.tubes,
+        _gameController.tubeKeys,
+        GameController.maxColors,  // Using the correct constant from GameController
+      );
       
-      // Show burst animation celebration first
-      _burstController.showCompletionBurst();
-      
-      // Then show completion popup after a short delay
-      Future.delayed(const Duration(milliseconds: 800), () {
-        if (mounted) {
-          _showCompletionPopup();
-        }
-      });
+      // Check if game is complete
+      if (_gameController.isGameComplete()) {
+        _gameController.playSound('complete');
+        
+        // Show burst animation celebration first
+        _burstController.showCompletionBurst();
+        
+        // Then show completion popup after a short delay
+        Future.delayed(const Duration(milliseconds: 800), () {
+          if (mounted) {
+            _showCompletionPopup();
+          }
+        });
+      }
     }
   }
 
@@ -240,6 +255,8 @@ class _GameHomePageState extends State<GameHomePage>
     _dialogManager.showCompletionPopup(() {
       setState(() {
         _gameController.nextLevel();
+        // Reset tube completion tracking for the new level
+        _tubeCompletionManager.reset();
         _checkAchievements();
       });
     });
@@ -294,6 +311,17 @@ class _GameHomePageState extends State<GameHomePage>
 
   void _removeSplashEffect(SplashEffectInfo effect) {
     _splashEffectManager.removeSplashEffect(effect);
+  }
+
+  /// Reset the level and clear tracked tube completions
+  void _resetLevel() {
+    setState(() {
+      _gameController.initializeLevel();
+      _selectedTube = null;
+      _tubeAnimationController.reset();
+      _hintAnimationController.reset();
+      _tubeCompletionManager.reset();
+    });
   }
 
   @override
@@ -406,14 +434,7 @@ class _GameHomePageState extends State<GameHomePage>
                     _showErrorPopup("No free undo moves left!");
                   }
                 },
-                onReset: () {
-                  setState(() {
-                    _gameController.initializeLevel();
-                    _selectedTube = null;
-                    _tubeAnimationController.reset();
-                    _hintAnimationController.reset();
-                  });
-                },
+                onReset: _resetLevel,
                 onAddTube: () {
                   if (_gameController.addExtraTube()) {
                     setState(() {});
