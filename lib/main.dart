@@ -5,7 +5,6 @@ import 'screens/game_home_page.dart';
 import 'utils/audio_manager.dart';
 import 'utils/dummy_audio.dart';
 import 'services/theme_service.dart';
-import 'models/game_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -57,7 +56,6 @@ class MyApp extends StatelessWidget {
           brightness: currentTheme.isDark ? Brightness.dark : Brightness.light,
         ),
         canvasColor: currentTheme.backgroundColor,
-        dialogBackgroundColor: currentTheme.backgroundColor,
         fontFamily: 'Roboto',
         visualDensity: VisualDensity.adaptivePlatformDensity,
         scaffoldBackgroundColor: currentTheme.backgroundColor,

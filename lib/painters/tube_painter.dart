@@ -44,37 +44,12 @@ class TubePainter extends CustomPainter {
     // Calculate dimensions
     final width = size.width;
     final height = size.height;
-    final tubeWidth = width * 0.8;
+    final tubeWidth = width * 0.65; // Original tube width proportion
     final tubeHeight = height * 0.9;
     final tubeLeft = (width - tubeWidth) / 2;
-    final tubeTop = (height - tubeHeight) / 2;
-    final cornerRadius = tubeWidth * 0.2;
-    final colorHeight = tubeHeight / maxColors;
-    
-    // Create tube outline path
-    final tubePath = Path()
-      ..moveTo(tubeLeft + cornerRadius, tubeTop)
-      ..lineTo(tubeLeft + tubeWidth - cornerRadius, tubeTop)
-      ..arcToPoint(
-        Offset(tubeLeft + tubeWidth, tubeTop + cornerRadius),
-        radius: Radius.circular(cornerRadius),
-      )
-      ..lineTo(tubeLeft + tubeWidth, tubeTop + tubeHeight - cornerRadius)
-      ..arcToPoint(
-        Offset(tubeLeft + tubeWidth - cornerRadius, tubeTop + tubeHeight),
-        radius: Radius.circular(cornerRadius),
-      )
-      ..lineTo(tubeLeft + cornerRadius, tubeTop + tubeHeight)
-      ..arcToPoint(
-        Offset(tubeLeft, tubeTop + tubeHeight - cornerRadius),
-        radius: Radius.circular(cornerRadius),
-      )
-      ..lineTo(tubeLeft, tubeTop + cornerRadius)
-      ..arcToPoint(
-        Offset(tubeLeft + cornerRadius, tubeTop),
-        radius: Radius.circular(cornerRadius),
-      )
-      ..close();
+    final tubeTop = height * 0.05; // Position tube higher up
+    final bottomRadius = tubeWidth * 0.5; // Larger rounded bottom
+    final colorHeight = tubeHeight / maxCapacity;
     
     // Save canvas for rotation if needed
     if (angle != null) {
@@ -84,6 +59,29 @@ class TubePainter extends CustomPainter {
       canvas.rotate(angle!);
       canvas.translate(-width / 2, -height / 2);
     }
+    
+    // Create test tube path with straight sides and rounded bottom
+    final tubePath = Path();
+    
+    // Top left point
+    tubePath.moveTo(tubeLeft, tubeTop);
+    
+    // Top right point and straight line down right side
+    tubePath.lineTo(tubeLeft + tubeWidth, tubeTop);
+    tubePath.lineTo(tubeLeft + tubeWidth, tubeTop + tubeHeight - bottomRadius);
+    
+    // Rounded bottom curve
+    final bottomRect = Rect.fromLTRB(
+      tubeLeft, 
+      tubeTop + tubeHeight - 2 * bottomRadius,
+      tubeLeft + tubeWidth, 
+      tubeTop + tubeHeight
+    );
+    tubePath.arcTo(bottomRect, 0, pi, false);
+    
+    // Straight line up left side back to top
+    tubePath.lineTo(tubeLeft, tubeTop);
+    tubePath.close();
     
     // Draw tube background (glass effect)
     final glassGradient = LinearGradient(
@@ -136,7 +134,7 @@ class TubePainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          colors[i].withOpacity(0.8),
+          colors[i].withOpacity(0.9),
           colors[i],
         ],
       );
@@ -183,8 +181,8 @@ class TubePainter extends CustomPainter {
       ..strokeWidth = 1.5;
     
     canvas.drawLine(
-      Offset(tubeLeft + cornerRadius, tubeTop),
-      Offset(tubeLeft + tubeWidth - cornerRadius, tubeTop),
+      Offset(tubeLeft, tubeTop),
+      Offset(tubeLeft + tubeWidth, tubeTop),
       rimPaint,
     );
     

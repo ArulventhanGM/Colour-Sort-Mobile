@@ -54,7 +54,7 @@ class _BackgroundPatternPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
       
-    final gridSize = 30.0;
+    const gridSize = 30.0;
     
     for (double x = 0; x < size.width; x += gridSize) {
       canvas.drawLine(
