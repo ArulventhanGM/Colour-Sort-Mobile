@@ -1,6 +1,6 @@
 {
-    "name": "connections_game",
-    "short_name": "connections_game",
+    "name": "magic_Pour",
+    "short_name": "magic_Pour",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

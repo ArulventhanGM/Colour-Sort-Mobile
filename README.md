@@ -1,4 +1,4 @@
-# connections_game
+# magic_Pour
 
 A new Flutter project.
 

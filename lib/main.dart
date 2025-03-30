@@ -46,7 +46,7 @@ class MyApp extends StatelessWidget {
     final currentTheme = themeService.currentTheme;
     
     return MaterialApp(
-      title: 'Color Sort Puzzle',
+      title: 'Magic Pour',
       theme: ThemeData(
         primaryColor: currentTheme.primaryColor,
         colorScheme: ColorScheme.fromSeed(
