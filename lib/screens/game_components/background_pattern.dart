@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/theme_service.dart';
+import '../../models/game_theme.dart'; // Added import for GameTheme
 
 /// Animated background pattern for the game
 class BackgroundPattern extends StatefulWidget {
