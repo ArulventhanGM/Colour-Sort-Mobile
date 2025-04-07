@@ -66,9 +66,14 @@ class GameTheme {
     tubeOutlineColor: Color(0xFF757575),
     headerColor: Color(0xFF212121),
     backgroundGradient: LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: [Color(0xFF263238), Color(0xFF1A1A1A)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        Color(0xFF1F2B3E), 
+        Color(0xFF121725), 
+        Color(0xFF0A0E18)
+      ],
+      stops: [0.0, 0.6, 1.0],
     ),
     isDark: true,
   );

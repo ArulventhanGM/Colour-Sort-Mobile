@@ -1,4 +1,4 @@
-# magic_Pour
+# Magic Pour - Puzzle
 
 A new Flutter project.
 

@@ -7,24 +7,24 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:colour_sort/main.dart';
+import 'package:provider/provider.dart';
+import 'package:magic_pour_puzzle/main.dart';
+import 'package:magic_pour_puzzle/services/theme_service.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('App loads without crashing', (WidgetTester tester) async {
+    // Create a mock ThemeService
+    final themeService = ThemeService();
+    
+    // Build our app and trigger a frame with the required provider
+    await tester.pumpWidget(
+      ChangeNotifierProvider<ThemeService>.value(
+        value: themeService,
+        child: const MyApp(),
+      ),
+    );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Basic verification that the app loads without crashing
+    expect(find.byType(MaterialApp), findsOneWidget);
   });
 }
