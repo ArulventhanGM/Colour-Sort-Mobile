@@ -322,7 +322,7 @@ class _AmbientParticlesPainter extends CustomPainter {
     final random = math.Random(12); // Fixed seed for consistent particles
     
     // Draw small floating particles
-    final particles = 50;
+    const particles = 50;
     for (int i = 0; i < particles; i++) {
       // Use animation to move particles
       final speed = 0.2 + random.nextDouble() * 0.3;
