@@ -1,0 +1,13 @@
+﻿2 available emulators:
+
+Id                                 ΓÇó Name                                 ΓÇó Manufacturer ΓÇó Platform
+
+Pixel_7a_API_35                    ΓÇó Pixel 7a API 35                      ΓÇó Google       ΓÇó android
+Resizable_Experimental_API_Baklava ΓÇó Resizable (Experimental) API Baklava ΓÇó Generic      ΓÇó android
+
+To run an emulator, run 'flutter emulators --launch <emulator id>'.
+To create a new emulator, run 'flutter emulators --create [--name xyz]'.
+
+You can find more information on managing emulators at the links below:
+  https://developer.android.com/studio/run/managing-avds
+  https://developer.android.com/studio/command-line/avdmanager

@@ -45,7 +45,6 @@ class _GameTubeState extends State<GameTube>
   late Animation<double> _tiltAnimation;
   late Animation<double> _bounceAnimation;
   late Animation<double> _liquidFillAnimation;
-  late Animation<double> _moveAnimation;
 
   @override
   void initState() {
@@ -96,11 +95,6 @@ class _GameTubeState extends State<GameTube>
     // Liquid fill animation with natural easing
     _liquidFillAnimation = _idleAnimController.drive(CurveTween(
       curve: Curves.easeInOutCubic,
-    ));
-
-    // Movement animation for tube translation
-    _moveAnimation = _idleAnimController.drive(CurveTween(
-      curve: Curves.easeOutCubic,
     ));
   }
 
@@ -184,9 +178,6 @@ class _GameTubeState extends State<GameTube>
         // Calculate lift, rotation and position with smoother transitions
         double liftValue = widget.liftAnimation != null
             ? widget.liftAnimation!.value * 30.0
-            : 0.0;
-        double dropValue = widget.dropAnimation != null
-            ? widget.dropAnimation!.value * 30.0
             : 0.0;
         double translateY = -liftValue +
             (widget.dropAnimation != null

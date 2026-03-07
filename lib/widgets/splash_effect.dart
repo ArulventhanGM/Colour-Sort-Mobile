@@ -22,23 +22,25 @@ class SplashEffect extends StatelessWidget {
     return Positioned(
       left: offset.dx - size / 2,
       top: offset.dy - size / 2,
-      child: TweenAnimationBuilder<double>(
-        tween: Tween<double>(begin: 0, end: 1),
-        duration: const Duration(milliseconds: 800),
-        onEnd: onComplete,
-        builder: (context, value, child) {
-          return Transform.scale(
-            scale: Curves.easeOutBack.transform(value),
-            child: CustomPaint(
-              size: Size(size, size),
-              painter: _SplashPainter(
-                progress: value,
-                color: color,
-                isColorMixing: isColorMixing,
+      child: IgnorePointer(
+        child: TweenAnimationBuilder<double>(
+          tween: Tween<double>(begin: 0, end: 1),
+          duration: const Duration(milliseconds: 800),
+          onEnd: onComplete,
+          builder: (context, value, child) {
+            return Transform.scale(
+              scale: Curves.easeOutBack.transform(value),
+              child: CustomPaint(
+                size: Size(size, size),
+                painter: _SplashPainter(
+                  progress: value,
+                  color: color,
+                  isColorMixing: isColorMixing,
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

@@ -3,7 +3,7 @@ import 'dart:math';
 import 'dart:ui';
 import 'game_animations.dart';
 
-/// Widget that renders the liquid pouring animation between tubes
+/// AAA Widget that renders a beautiful glowing liquid pouring animation between tubes
 class LiquidPouringAnimation extends StatefulWidget {
   final Color pouringColor;
   final Offset pourStart;
@@ -33,130 +33,130 @@ class _LiquidPouringAnimationState extends State<LiquidPouringAnimation> {
         final path = GameAnimations.createPouringPath(
             widget.pourStart, widget.pourEnd, widget.angleDirection);
 
-        try {
-          final metrics = path.computeMetrics();
-          if (metrics.isEmpty) {
-            return const SizedBox.shrink();
-          }
+        final metrics = path.computeMetrics().toList();
+        if (metrics.isEmpty) return const SizedBox.shrink();
+        
+        final metric = metrics.first;
+        final currentDistance = metric.length * widget.pourAnimation.value;
+        if (currentDistance <= 0) return const SizedBox.shrink();
 
-          PathMetric? metric;
-          for (final m in metrics) {
-            metric = m;
-            break;
-          }
+        final extractPath = metric.extractPath(0, currentDistance);
 
-          if (metric == null) {
-            return const SizedBox.shrink();
-          }
-
-          final currentDistance = metric.length * widget.pourAnimation.value;
-
-          if (currentDistance <= 0 || currentDistance > metric.length) {
-            return const SizedBox.shrink();
-          }
-
-          return Stack(
-            children: [
-              // Water stream - main path
-              ClipPath(
-                clipper: WaterStreamClipper(
-                  path: path,
-                  progress: widget.pourAnimation.value,
-                  width: 8.0,
-                ),
-                child: Container(
-                  width: MediaQuery.of(context).size.width,
-                  height: MediaQuery.of(context).size.height,
-                  color: widget.pouringColor.withOpacity(0.7),
-                ),
+        return Stack(
+          children: [
+            // Glowing Stream
+            CustomPaint(
+               size: Size.infinite,
+               painter: _LiquidStreamPainter(
+                  path: extractPath,
+                  color: widget.pouringColor,
+               ),
+            ),
+            
+            // Lively Splashing at Destination
+            if (widget.pourAnimation.value > 0.4)
+              Positioned(
+                 left: widget.pourEnd.dx - 20,
+                 top: widget.pourEnd.dy - 5,
+                 child: _buildSplash(widget.pourAnimation.value),
               ),
-
-              // Water droplets for realism
-              ...List.generate(10, (index) {
-                if (widget.pourAnimation.value < 0.1 ||
-                    widget.pourAnimation.value > 0.9) {
-                  return const SizedBox.shrink();
-                }
-
-                // Random offsets for droplets
-                final random = Random();
-                final dropletOffset =
-                    random.nextDouble() * metric!.length * 0.7;
-                final sideOffset = (random.nextDouble() - 0.5) * 15;
-
-                // Only show droplets in the middle section of the pour
-                if (dropletOffset < currentDistance * 0.2 ||
-                    dropletOffset > currentDistance * 0.8) {
-                  return const SizedBox.shrink();
-                }
-
-                final dropletPosition =
-                    metric.getTangentForOffset(dropletOffset);
-                if (dropletPosition == null) {
-                  return const SizedBox.shrink();
-                }
-
-                return Positioned(
-                  left: dropletPosition.position.dx + sideOffset,
-                  top: dropletPosition.position.dy + random.nextDouble() * 10,
-                  child: TweenAnimationBuilder(
-                    tween: Tween<double>(begin: 0.0, end: 1.0),
-                    duration: const Duration(milliseconds: 1000),
-                    builder: (context, value, child) {
-                      return Transform.translate(
-                        offset: Offset(0, value * 15),
-                        child: Opacity(
-                          opacity: 1.0 - value,
-                          child: Container(
-                            width: 3 + random.nextDouble() * 4,
-                            height: 3 + random.nextDouble() * 4,
-                            decoration: BoxDecoration(
-                              color: widget.pouringColor,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                );
-              }),
-
-              // Splash effect at destination
-              if (widget.pourAnimation.value > 0.4)
-                Positioned(
-                  left: widget.pourEnd.dx - 20,
-                  top: widget.pourEnd.dy - 5,
-                  child: TweenAnimationBuilder(
-                    tween: Tween<double>(
-                        begin: 0.0,
-                        end: widget.pourAnimation.value > 0.7
-                            ? 1.0
-                            : widget.pourAnimation.value),
-                    duration: const Duration(milliseconds: 500),
-                    builder: (context, value, child) {
-                      return Opacity(
-                        opacity:
-                            value < 0.7 ? value : 1.0 - ((value - 0.7) / 0.3),
-                        child: Container(
-                          width: 40 * value,
-                          height: 10 * value,
-                          decoration: BoxDecoration(
-                            color: widget.pouringColor.withOpacity(0.5),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-            ],
-          );
-        } catch (e) {
-          print("Animation error: $e");
-          return const SizedBox.shrink();
-        }
+              
+            // Animated Particles
+            ...List.generate(8, (index) {
+               if (widget.pourAnimation.value < 0.2 || widget.pourAnimation.value > 0.9) {
+                 return const SizedBox.shrink();
+               }
+               final r = Random(index);
+               final offset = r.nextDouble() * currentDistance;
+               final pos = metric.getTangentForOffset(offset);
+               if (pos == null) return const SizedBox.shrink();
+               
+               final dxBounce = (r.nextDouble() - 0.5) * 20;
+               final sz = 3.0 + r.nextDouble() * 5.0;
+               
+               return Positioned(
+                  left: pos.position.dx + dxBounce,
+                  top: pos.position.dy + r.nextDouble() * 10 - 5,
+                  child: Container(
+                     width: sz,
+                     height: sz,
+                     decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.8),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                           BoxShadow(color: widget.pouringColor.withOpacity(0.5), blurRadius: 4, spreadRadius: 1)
+                        ]
+                     ),
+                  )
+               );
+            }),
+          ],
+        );
       },
     );
   }
+  
+  Widget _buildSplash(double progress) {
+     final p = progress < 0.7 ? progress : 1.0 - ((progress - 0.7) / 0.3);
+     return Opacity(
+        opacity: p.clamp(0.0, 1.0),
+        child: Container(
+            width: 40 * p,
+            height: 15 * p,
+            decoration: BoxDecoration(
+               color: widget.pouringColor,
+               borderRadius: BorderRadius.circular(10),
+               boxShadow: [
+                  BoxShadow(color: Colors.white.withOpacity(0.5), blurRadius: 5, spreadRadius: 2)
+               ]
+            ),
+        ),
+     );
+  }
+}
+
+class _LiquidStreamPainter extends CustomPainter {
+   final Path path;
+   final Color color;
+   
+   _LiquidStreamPainter({required this.path, required this.color});
+   
+   @override
+   void paint(Canvas canvas, Size size) {
+      // Glow
+      final glowPaint = Paint()
+         ..color = color.withOpacity(0.4)
+         ..style = PaintingStyle.stroke
+         ..strokeWidth = 14.0
+         ..strokeCap = StrokeCap.round
+         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+         
+      // Main Body
+      final bodyPaint = Paint()
+         ..color = color
+         ..style = PaintingStyle.stroke
+         ..strokeWidth = 8.0
+         ..strokeCap = StrokeCap.round;
+         
+      // Specular Highlight (Inner lighter stripe)
+      final highlightPaint = Paint()
+         ..color = Colors.white.withOpacity(0.6)
+         ..style = PaintingStyle.stroke
+         ..strokeWidth = 3.0
+         ..strokeCap = StrokeCap.round;
+         
+      canvas.drawPath(path, glowPaint);
+      canvas.drawPath(path, bodyPaint);
+      
+      // slightly offset highlight to give 3D gloss
+      canvas.save();
+      canvas.translate(-2, 0);
+      canvas.drawPath(path, highlightPaint);
+      canvas.restore();
+   }
+   
+   @override
+   bool shouldRepaint(_LiquidStreamPainter oldDelegate) {
+      return oldDelegate.path != path || oldDelegate.color != color;
+   }
 }

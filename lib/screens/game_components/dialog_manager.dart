@@ -89,6 +89,7 @@ class DialogManager {
 
       // Show after a short delay to let level completion dialog close
       Future.delayed(const Duration(milliseconds: 500), () {
+        if (!context.mounted) return;
         showDialog(
           context: context,
           barrierDismissible: false,

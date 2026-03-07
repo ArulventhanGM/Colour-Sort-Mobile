@@ -9,7 +9,7 @@ class TubePainter extends CustomPainter {
   final bool isReceiving;
   final int maxColors;
   final AnimationController? liquidAnimation;
-  
+
   // New parameters for the enhanced animations
   final int maxCapacity;
   final double? waveOffset;
@@ -44,152 +44,302 @@ class TubePainter extends CustomPainter {
     // Calculate dimensions
     final width = size.width;
     final height = size.height;
-    final tubeWidth = width * 0.65; // Original tube width proportion
-    final tubeHeight = height * 0.9;
+    final tubeWidth = width * 0.75;
+    final tubeHeight = height * 0.95;
     final tubeLeft = (width - tubeWidth) / 2;
-    final tubeTop = height * 0.05; // Position tube higher up
-    final bottomRadius = tubeWidth * 0.5; // Larger rounded bottom
-    final colorHeight = tubeHeight / maxCapacity;
+    final tubeTop = height * 0.02; 
+    final bottomRadius = tubeWidth * 0.5;
     
-    // Save canvas for rotation if needed
+    // Gap from top before liquids start
+    final topPadding = tubeHeight * 0.1;
+    final liquidAreaHeight = tubeHeight - topPadding - bottomRadius;
+    final colorHeight = liquidAreaHeight / maxCapacity;
+
     if (angle != null) {
       canvas.save();
-      // Rotate around center of tube
       canvas.translate(width / 2, height / 2);
       canvas.rotate(angle!);
       canvas.translate(-width / 2, -height / 2);
     }
-    
-    // Create test tube path with straight sides and rounded bottom
+
     final tubePath = Path();
-    
-    // Top left point
     tubePath.moveTo(tubeLeft, tubeTop);
-    
-    // Top right point and straight line down right side
     tubePath.lineTo(tubeLeft + tubeWidth, tubeTop);
     tubePath.lineTo(tubeLeft + tubeWidth, tubeTop + tubeHeight - bottomRadius);
-    
-    // Rounded bottom curve
     final bottomRect = Rect.fromLTRB(
-      tubeLeft, 
+      tubeLeft,
       tubeTop + tubeHeight - 2 * bottomRadius,
-      tubeLeft + tubeWidth, 
-      tubeTop + tubeHeight
+      tubeLeft + tubeWidth,
+      tubeTop + tubeHeight,
     );
     tubePath.arcTo(bottomRect, 0, pi, false);
-    
-    // Straight line up left side back to top
     tubePath.lineTo(tubeLeft, tubeTop);
     tubePath.close();
-    
-    // Draw tube background (glass effect)
-    final glassGradient = LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
+
+    // Draw inner tube background shadow/depth
+    final backWallGradient = LinearGradient(
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
       colors: [
-        Colors.white.withOpacity(0.3),
         Colors.white.withOpacity(0.1),
+        Colors.white.withOpacity(0.0),
+        Colors.black.withOpacity(0.1),
       ],
+      stops: const [0.0, 0.5, 1.0],
     );
     
-    final glassPaint = Paint()
-      ..shader = glassGradient.createShader(Rect.fromLTWH(tubeLeft, tubeTop, tubeWidth, tubeHeight))
-      ..style = PaintingStyle.fill;
-      
-    canvas.drawPath(tubePath, glassPaint);
-    
-    // Clip to tube for liquid colors
-    canvas.save(); // Save state before clipping
+    canvas.drawPath(
+      tubePath,
+      Paint()
+        ..shader = backWallGradient.createShader(Rect.fromLTWH(tubeLeft, tubeTop, tubeWidth, tubeHeight))
+        ..style = PaintingStyle.fill,
+    );
+
+    // DRAW LIQUIDS
+    canvas.save();
     canvas.clipPath(tubePath);
-    
-    // Draw liquid colors inside tube with wave effect if needed
+
+    // We draw liquids from bottom up so top layers overlap correctly
     for (int i = 0; i < colors.length; i++) {
-      final colorTop = tubeTop + tubeHeight - ((i + 1) * colorHeight);
+      // Index from bottom (0 is bottom-most, but colors[0] is bottom in our data model)
+      // Actually colors[0] is usually bottom in water sort. Let's assume colors[0] is bottom layer.
+      final layerIndex = i;
       
-      // Animation for receiving tube or pouring
+      final colorBaseTop = tubeTop + topPadding + liquidAreaHeight - (layerIndex * colorHeight);
+      
       double animOffset = 0;
       if (isReceivingLiquid && i == colors.length - 1 && liquidFillOffset != null) {
         animOffset = colorHeight * (1 - (liquidFillOffset as double));
       } else if (pouringAnimation && pouringProgress > 0 && i == colors.length - 1) {
-        // Apply pouring animation effect
         animOffset = colorHeight * pouringProgress;
       }
-      
-      // Apply wave effect for natural liquid movement
+
       double waveHeight = 0;
-      if (waveOffset != null && isSelected) {
-        // Small wave effect for selected tube (more noticeable at top)
-        waveHeight = i == colors.length - 1 ? sin(waveOffset as double) * 3 : 0;
+      if (waveOffset != null && isSelected && i == colors.length - 1) {
+        waveHeight = sin(waveOffset as double) * 4;
       }
+
+      final colorTop = colorBaseTop - animOffset + waveHeight;
+      final currentColorHeight = colorHeight + animOffset;
       
-      final colorRect = Rect.fromLTWH(
-        tubeLeft,
-        colorTop - animOffset + waveHeight,
-        tubeWidth,
-        colorHeight + animOffset,
+      // We draw each liquid layer extending down to the bottom of the tube to cover the rounded part nicely,
+      // but only if it's the bottom layer. The subsequent layers sit on top.
+      // Wait, since we clip to the tube, we can just draw rectangles!
+      // To allow smooth curves at the boundary, we draw a curved path.
+      
+      Path liquidLayerPath = Path();
+      
+      // Top curve
+      liquidLayerPath.moveTo(tubeLeft, colorTop);
+      
+      // Add subtle meniscus (curve) at top
+      liquidLayerPath.quadraticBezierTo(
+        tubeLeft + tubeWidth / 2, 
+        colorTop + (isSelected ? waveHeight * 1.5 : 4), 
+        tubeLeft + tubeWidth, 
+        colorTop
       );
       
+      // Right edge down
+      // If bottom layer, go all the way to bottom, otherwise to bottom of *this* layer
+      double bottomY = layerIndex == 0 ? (tubeTop + tubeHeight) : (colorBaseTop + colorHeight + 2); // +2 to prevent gaps
+      liquidLayerPath.lineTo(tubeLeft + tubeWidth, bottomY);
+      liquidLayerPath.lineTo(tubeLeft, bottomY);
+      liquidLayerPath.close();
+
+      // Liquid base color gradient (darker edges, brighter center)
       final liquidGradient = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
         colors: [
-          colors[i].withOpacity(0.9),
+          _darken(colors[i], 0.15),
           colors[i],
+          _darken(colors[i], 0.2),
         ],
+        stops: const [0.0, 0.4, 1.0],
       );
       
-      final liquidPaint = Paint()
-        ..shader = liquidGradient.createShader(colorRect)
-        ..style = PaintingStyle.fill;
-      
-      canvas.drawRect(colorRect, liquidPaint);
-      
-      // Add shine highlight to liquid
-      final highlightPaint = Paint()
-        ..color = Colors.white.withOpacity(0.3)
-        ..style = PaintingStyle.fill;
-      
-      canvas.drawRect(
-        Rect.fromLTWH(
-          tubeLeft + tubeWidth * 0.7,
-          colorTop - animOffset + waveHeight,
-          tubeWidth * 0.3,
-          colorHeight * 0.3,
-        ),
-        highlightPaint,
+      canvas.drawPath(
+        liquidLayerPath,
+        Paint()
+          ..shader = liquidGradient.createShader(Rect.fromLTWH(tubeLeft, colorTop, tubeWidth, currentColorHeight))
+          ..style = PaintingStyle.fill,
       );
+      
+      // Top surface highlight (oval)
+      final topSurfaceRect = Rect.fromCenter(
+        center: Offset(tubeLeft + tubeWidth / 2, colorTop),
+        width: tubeWidth, 
+        height: tubeWidth * 0.25
+      );
+      final surfaceGradient = RadialGradient(
+        center: Alignment.center,
+        radius: 0.8,
+        colors: [
+          Colors.white.withOpacity(0.6),
+          colors[i].withOpacity(0.8),
+          _darken(colors[i], 0.2).withOpacity(0.9),
+        ]
+      );
+      canvas.drawOval(
+        topSurfaceRect, 
+        Paint()..shader = surfaceGradient.createShader(topSurfaceRect)
+      );
+
+      // Add bubbles
+      _drawBubbles(canvas, tubeLeft, colorTop, tubeWidth, currentColorHeight, layerIndex, colors[i]);
     }
+    canvas.restore();
+
+    // DRAW TUBE REFLECTIONS / GLASS HIGHLIGHTS (over liquids)
     
-    // Reset clip
-    canvas.restore(); // Restore after drawing liquids
-    
-    // Draw tube outline with themed color
-    final outlinePaint = Paint()
-      ..color = isSelected 
-          ? accentColor
-          : tubeOutlineColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = isSelected ? 3.0 : 2.0;
-    
-    canvas.drawPath(tubePath, outlinePaint);
-    
-    // Draw tube "rim" at the top
-    final rimPaint = Paint()
-      ..color = tubeOutlineColor.withOpacity(0.7)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    
-    canvas.drawLine(
-      Offset(tubeLeft, tubeTop),
-      Offset(tubeLeft + tubeWidth, tubeTop),
-      rimPaint,
+    // Left rim highlight (thick specular curve)
+    final leftHighlightPath = Path();
+    leftHighlightPath.moveTo(tubeLeft + tubeWidth * 0.1, tubeTop + topPadding);
+    leftHighlightPath.lineTo(tubeLeft + tubeWidth * 0.1, tubeTop + tubeHeight - bottomRadius);
+    leftHighlightPath.arcTo(
+      Rect.fromLTRB(
+        tubeLeft + tubeWidth * 0.1, 
+        tubeTop + tubeHeight - 2 * bottomRadius + tubeWidth * 0.1, 
+        tubeLeft + tubeWidth - tubeWidth * 0.1, 
+        tubeTop + tubeHeight - tubeWidth * 0.1
+      ), 
+      pi, 
+      -pi / 2.5, 
+      false
     );
     
-    // Restore canvas if rotated
-    if (angle != null) {
-      canvas.restore();
+    canvas.drawPath(
+      leftHighlightPath,
+      Paint()
+        ..color = Colors.white.withOpacity(0.5)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = tubeWidth * 0.08
+        ..strokeCap = StrokeCap.round,
+    );
+    
+    // Right thin edge highlight
+    canvas.drawLine(
+      Offset(tubeLeft + tubeWidth * 0.95, tubeTop + topPadding),
+      Offset(tubeLeft + tubeWidth * 0.95, tubeTop + tubeHeight - bottomRadius),
+      Paint()
+        ..color = Colors.white.withOpacity(0.7)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = tubeWidth * 0.04
+        ..strokeCap = StrokeCap.round,
+    );
+
+    // Glowing Outline (Selected) or Normal Outline
+    if (isSelected) {
+      canvas.drawPath(
+        tubePath,
+        Paint()
+          ..color = accentColor.withOpacity(0.8)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 6.0
+          ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 8),
+      );
+      canvas.drawPath(
+        tubePath,
+        Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.0,
+      );
+    } else {
+      // Soft glass boundary outline
+      canvas.drawPath(
+        tubePath,
+        Paint()
+          ..color = Colors.white.withOpacity(0.6)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.0,
+      );
+      canvas.drawPath(
+        tubePath,
+        Paint()
+          ..color = Colors.black.withOpacity(0.2)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.0,
+      );
     }
+
+    // Top Rim Output (3D Oval Ring)
+    final rimRect = Rect.fromCenter(
+      center: Offset(tubeLeft + tubeWidth / 2, tubeTop),
+      width: tubeWidth + 6,
+      height: tubeWidth * 0.25,
+    );
+    
+    // Rim shadow
+    canvas.drawOval(
+      rimRect.translate(0, 2),
+      Paint()
+        ..color = Colors.black.withOpacity(0.2)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3,
+    );
+    
+    // Rim body
+    canvas.drawOval(
+      rimRect,
+      Paint()
+        ..color = Colors.white.withOpacity(0.8)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
+    
+    // Rim top bright highlight
+    canvas.drawArc(
+      rimRect,
+      pi + pi / 4,
+      pi / 2,
+      false,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round,
+    );
+
+    if (angle != null) canvas.restore();
+  }
+
+  void _drawBubbles(Canvas canvas, double left, double top, double width, double height, int seed, Color baseColor) {
+    final rand = Random(seed + 100);
+    final numBubbles = 4 + rand.nextInt(5);
+    
+    for (int j = 0; j < numBubbles; j++) {
+      double bx = left + 4 + rand.nextDouble() * (width - 8);
+      // Ensure bubbles are well within the vertical space
+      double by = top + 10 + rand.nextDouble() * (height - 20); 
+      double bSize = 1.5 + rand.nextDouble() * 2.5;
+
+      // Draw bubble
+      canvas.drawCircle(
+        Offset(bx, by),
+        bSize,
+        Paint()
+          ..color = Colors.white.withOpacity(0.6)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.0,
+      );
+      // Bubble inner highlight
+      canvas.drawCircle(
+        Offset(bx - bSize * 0.3, by - bSize * 0.3),
+        bSize * 0.3,
+        Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.fill,
+      );
+    }
+  }
+
+  Color _darken(Color color, double amount) {
+    assert(amount >= 0 && amount <= 1);
+    final hsl = HSLColor.fromColor(color);
+    final darkened = hsl.withLightness((hsl.lightness - amount).clamp(0.0, 1.0));
+    return darkened.toColor();
   }
 
   @override
@@ -206,3 +356,4 @@ class TubePainter extends CustomPainter {
         oldDelegate.isReceivingLiquid != isReceivingLiquid;
   }
 }
+

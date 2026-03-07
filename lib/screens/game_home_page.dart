@@ -343,11 +343,9 @@ class _GameHomePageState extends State<GameHomePage>
                 onHintPressed: _showHint,
               ),
 
-              // Game stats
+              // Puzzle Progress
               GameStats(
-                score: _gameController.score,
-                movesCount: _gameController.movesCount,
-                coinsEarned: _gameController.coinsEarned,
+                gameController: _gameController,
               ),
 
               // Main game area
@@ -384,40 +382,6 @@ class _GameHomePageState extends State<GameHomePage>
                       ),
                     ),
 
-                    // Pouring animation overlay
-                    if (_tubeAnimationController.pouringColor != null &&
-                        _tubeAnimationController.pourStart != null &&
-                        _tubeAnimationController.pourEnd != null)
-                      LiquidPouringAnimation(
-                        pouringColor: _tubeAnimationController.pouringColor!,
-                        pourStart: _tubeAnimationController.pourStart!,
-                        pourEnd: _tubeAnimationController.pourEnd!,
-                        pourAnimation: _pourController,
-                      ),
-
-                    // Splash effects
-                    ..._splashEffectManager.splashEffects.map((effect) => SplashEffect(
-                          offset: effect.offset,
-                          color: effect.color,
-                          size: effect.size,
-                          onComplete: () => _removeSplashEffect(effect),
-                          isColorMixing: effect.isColorMixing,
-                        )),
-                        
-                    // Hint arrow animation
-                    if (_hintAnimationController.showingHintAnimation && 
-                        _hintAnimationController.hintFromPosition != null && 
-                        _hintAnimationController.hintToPosition != null)
-                      CustomPaint(
-                        painter: HintArrowPainter(
-                          startPoint: _hintAnimationController.hintFromPosition!,
-                          endPoint: _hintAnimationController.hintToPosition!,
-                          animation: _hintController,
-                          arrowColor: Colors.amber.shade600,
-                          arrowWidth: 6.0,
-                        ),
-                        size: Size.infinite,
-                      ),
                   ],
                 ),
               ),
@@ -447,6 +411,45 @@ class _GameHomePageState extends State<GameHomePage>
               ),
             ],
           ),
+          
+          // Pouring animation overlay (Root level for global coordinates)
+          if (_tubeAnimationController.pouringColor != null &&
+              _tubeAnimationController.pourStart != null &&
+              _tubeAnimationController.pourEnd != null)
+            IgnorePointer(
+               child: LiquidPouringAnimation(
+                 pouringColor: _tubeAnimationController.pouringColor!,
+                 pourStart: _tubeAnimationController.pourStart!,
+                 pourEnd: _tubeAnimationController.pourEnd!,
+                 pourAnimation: _pourController,
+               ),
+            ),
+
+          // Splash effects (Root level for global coordinates)
+          ..._splashEffectManager.splashEffects.map((effect) => SplashEffect(
+             offset: effect.offset,
+             color: effect.color,
+             size: effect.size,
+             onComplete: () => _removeSplashEffect(effect),
+             isColorMixing: effect.isColorMixing,
+          )),
+              
+          // Hint arrow animation (Root level for global coordinates)
+          if (_hintAnimationController.showingHintAnimation && 
+              _hintAnimationController.hintFromPosition != null && 
+              _hintAnimationController.hintToPosition != null)
+            IgnorePointer(
+               child: CustomPaint(
+                 painter: HintArrowPainter(
+                   startPoint: _hintAnimationController.hintFromPosition!,
+                   endPoint: _hintAnimationController.hintToPosition!,
+                   animation: _hintController,
+                   arrowColor: Colors.amber.shade600,
+                   arrowWidth: 6.0,
+                 ),
+                 size: Size.infinite,
+               ),
+            ),
         ],
       ),
     );

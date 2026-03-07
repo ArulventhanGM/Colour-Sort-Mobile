@@ -24,8 +24,7 @@ class TubesGrid extends StatelessWidget {
   final List<SplashEffectInfo> splashEffects;
   final TubeSelectionCallback onTubeSelected;
   final PourActionCallback onPourAction;
-  final VoidCallback
-      onAddExtraTube; // Keeping the parameter for backward compatibility
+  final VoidCallback onAddExtraTube;
 
   const TubesGrid({
     Key? key,
@@ -48,16 +47,23 @@ class TubesGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Calculate tube dimensions
-        double tubeWidth =
-            constraints.maxWidth / (gameController.tubes.length + 1);
-        tubeWidth = min(tubeWidth, 60.0);
-        double tubeHeight = tubeWidth * 3;
+        // Calculate rows
+        int totalTubes = gameController.tubes.length;
+        int maxTubesPerRow = 7;
+        int numRows = (totalTubes / maxTubesPerRow).ceil();
+        if (numRows == 0) numRows = 1;
+        int tubesPerRow = (totalTubes / numRows).ceil();
 
-        // Calculate total width of all tubes including spacing
-        double totalWidth = (tubeWidth + 10) * gameController.tubes.length;
-        double horizontalPadding =
-            max(0, (constraints.maxWidth - totalWidth) / 2);
+        List<List<int>> tubeRows = [];
+        for (int i = 0; i < totalTubes; i += tubesPerRow) {
+          int end = (i + tubesPerRow < totalTubes) ? i + tubesPerRow : totalTubes;
+          tubeRows.add(List<int>.generate(end - i, (index) => i + index));
+        }
+
+        // Calculate tube dimensions based on tubes per row
+        double tubeWidth = constraints.maxWidth / (tubesPerRow + 1.5);
+        tubeWidth = min(tubeWidth, 55.0); // Slightly thinner for AAA look
+        double tubeHeight = tubeWidth * 3.5;
 
         return Center(
           child: Container(
@@ -65,92 +71,160 @@ class TubesGrid extends StatelessWidget {
               maxWidth: constraints.maxWidth,
               maxHeight: constraints.maxHeight,
             ),
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-              child: Wrap(
-                alignment: WrapAlignment.center,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 10,
-                runSpacing: 20,
-                children: [
-                  // Tubes - only showing the game tubes, no "Add Tube" button
-                  ...List.generate(gameController.tubes.length, (index) {
-                    return GestureDetector(
-                      key: gameController.tubeKeys[index],
-                      onTap: () {
-                        if (gameController.animating) return;
-
-                        if (selectedTube == null) {
-                          // Select a tube if it has liquid
-                          if (gameController.tubes[index].isNotEmpty) {
-                            onTubeSelected(index);
-                          }
-                        } else {
-                          // If same tube is tapped, deselect it
-                          if (selectedTube == index) {
-                            onTubeSelected(-1); // -1 to deselect
-                          } else {
-                            // Pour water from selected to this tube
-                            onPourAction(selectedTube!, index);
-                          }
-                        }
-                      },
-                      child: AnimatedBuilder(
-                        animation: Listenable.merge([
-                          if (liftAnimation != null) liftAnimation!,
-                          if (rotateAnimation != null) rotateAnimation!,
-                          if (dropAnimation != null) dropAnimation!,
-                          if (pourAnimation != null) pourAnimation!,
-                        ]),
-                        builder: (context, child) {
-                          // If this is the tube being animated for pouring
-                          if (index == liftedTube) {
-                            return GameTube(
-                              key: ValueKey('animatedTube_$index'),
-                              colors: gameController.tubes[index],
-                              isSelected: true,
-                              isAnimating: true,
-                              width: tubeWidth,
-                              height: tubeHeight,
-                              liftAnimation: liftAnimation,
-                              rotateAnimation: rotateAnimation,
-                              dropAnimation: dropAnimation,
-                              pourAnimation: pourAnimation,
-                              rotationAngle: liftedTubeAngle,
-                            );
-                          }
-
-                          // If this is the receiving tube
-                          if (index == receivingTube) {
-                            return GameTube(
-                              key: ValueKey('receivingTube_$index'),
-                              colors: gameController.tubes[index],
-                              isSelected: false,
-                              width: tubeWidth,
-                              height: tubeHeight,
-                              isReceivingLiquid: true,
-                            );
-                          }
-
-                          // Otherwise render normal tube
-                          return GameTube(
-                            key: ValueKey('normalTube_$index'),
-                            colors: gameController.tubes[index],
-                            isSelected: selectedTube == index,
-                            width: tubeWidth,
-                            height: tubeHeight,
-                          );
-                        },
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: tubeRows.map((rowIndices) {
+                return Container(
+                  margin: EdgeInsets.only(bottom: tubeHeight * 0.3),
+                  child: Stack(
+                    alignment: Alignment.bottomCenter,
+                    clipBehavior: Clip.none,
+                    children: [
+                      // Render the 3D Shelf
+                      Positioned(
+                        bottom: -15, // Put the shelf exactly under the tubes
+                        child: _buildShelf(constraints.maxWidth * 0.9),
                       ),
-                    );
-                  }),
-                  // "Add Tube" button removed from here
-                ],
-              ),
+                      
+                      // Render the Tubes in this row
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: rowIndices.map((index) {
+                          return Padding(
+                            padding: EdgeInsets.symmetric(horizontal: tubeWidth * 0.15),
+                            child: _buildTubeGesture(index, tubeWidth, tubeHeight),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildShelf(double width) {
+    return Container(
+      width: width,
+      height: 18,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(9),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.white.withOpacity(0.9),
+            Color(0xFFE2E8F0),
+            Color(0xFFCBD5E1),
+          ],
+          stops: [0.0, 0.4, 1.0],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.white.withOpacity(0.8),
+            offset: Offset(0, -2),
+            blurRadius: 2,
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            offset: Offset(0, 6),
+            blurRadius: 8,
+          ),
+          BoxShadow(
+            color: Colors.blue.withOpacity(0.1),
+            offset: Offset(0, 10),
+            blurRadius: 15,
+            spreadRadius: 5,
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Shelf front rim highlight
+          Positioned(
+            bottom: 2,
+            left: 5,
+            right: 5,
+            child: Container(
+              height: 2,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(1),
+              ),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTubeGesture(int index, double width, double height) {
+    return GestureDetector(
+      key: gameController.tubeKeys[index],
+      onTap: () {
+        if (gameController.animating) return;
+
+        if (selectedTube == null) {
+          if (gameController.tubes[index].isNotEmpty) {
+            onTubeSelected(index);
+          }
+        } else {
+          if (selectedTube == index) {
+            onTubeSelected(-1);
+          } else {
+            onPourAction(selectedTube!, index);
+          }
+        }
+      },
+      child: AnimatedBuilder(
+        animation: Listenable.merge([
+          if (liftAnimation != null) liftAnimation!,
+          if (rotateAnimation != null) rotateAnimation!,
+          if (dropAnimation != null) dropAnimation!,
+          if (pourAnimation != null) pourAnimation!,
+        ]),
+        builder: (context, child) {
+          if (index == liftedTube) {
+            return GameTube(
+              key: ValueKey('animatedTube_$index'),
+              colors: gameController.tubes[index],
+              isSelected: true,
+              isAnimating: true,
+              width: width,
+              height: height,
+              liftAnimation: liftAnimation,
+              rotateAnimation: rotateAnimation,
+              dropAnimation: dropAnimation,
+              pourAnimation: pourAnimation,
+              rotationAngle: liftedTubeAngle,
+            );
+          }
+
+          if (index == receivingTube) {
+            return GameTube(
+              key: ValueKey('receivingTube_$index'),
+              colors: gameController.tubes[index],
+              isSelected: false,
+              width: width,
+              height: height,
+              isReceivingLiquid: true,
+            );
+          }
+
+          return GameTube(
+            key: ValueKey('normalTube_$index'),
+            colors: gameController.tubes[index],
+            isSelected: selectedTube == index,
+            width: width,
+            height: height,
+          );
+        },
+      ),
     );
   }
 }

@@ -1,118 +1,138 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../services/theme_service.dart';
-import '../../models/game_theme.dart';
+import 'game_controller.dart';
 
-/// Widget displaying game statistics
+/// Floating Puzzle Progress Bar
 class GameStats extends StatelessWidget {
-  final int score;
-  final int movesCount;
-  final int coinsEarned;
+  final GameController gameController;
 
   const GameStats({
     super.key,
-    required this.score,
-    required this.movesCount,
-    required this.coinsEarned,
+    required this.gameController,
   });
 
   @override
   Widget build(BuildContext context) {
-    final themeService = Provider.of<ThemeService>(context);
-    final currentTheme = themeService.currentTheme;
+    // Calculate progress
+    int sortedTubes = 0;
+    int targetTubes = gameController.tubes.length - 2; // Assuming 2 empty tubes base
     
+    // To handle dynamic extra tubes gracefully, we simply check how many are currently correctly sorted.
+    for (final tube in gameController.tubes) {
+       if (tube.isNotEmpty && tube.length == 4 && tube.every((c) => c == tube.first)) {
+           sortedTubes++;
+       }
+    }
+    
+    double progress = targetTubes > 0 ? (sortedTubes / targetTubes).clamp(0.0, 1.0) : 0.0;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      decoration: BoxDecoration(
-        color: currentTheme.secondaryColor.withOpacity(0.8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 3,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 0.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Score
-          _StatItem(
-            label: 'Score',
-            value: score.toString(),
-            icon: Icons.stars,
-            theme: currentTheme,
+          // Title
+          Text(
+            'PUZZLE PROGRESS',
+            style: TextStyle(
+              color: const Color(0xFF6F32A8),
+              fontWeight: FontWeight.w900,
+              fontSize: 14,
+              letterSpacing: 2.0,
+              shadows: [Shadow(color: Colors.white.withOpacity(0.8), offset: const Offset(0, 1), blurRadius: 2)],
+            ),
           ),
+          const SizedBox(height: 8),
           
-          // Moves
-          _StatItem(
-            label: 'Moves',
-            value: movesCount.toString(),
-            icon: Icons.swap_horiz,
-            theme: currentTheme,
-          ),
-          
-          // Coins earned
-          _StatItem(
-            label: 'Coins',
-            value: '+$coinsEarned',
-            icon: Icons.monetization_on,
-            theme: currentTheme,
+          // Progress Bar Container
+          Container(
+            height: 28,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.2), // Dark track
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white, width: 2),
+              boxShadow: const [
+                BoxShadow(color: Colors.black12, offset: Offset(0, 3), blurRadius: 4),
+              ],
+            ),
+            child: Stack(
+              children: [
+                // Animated Fill
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 500),
+                  curve: Curves.easeOutCubic,
+                  width: MediaQuery.of(context).size.width * progress, // Approximation for relative fill; better inside a LayoutBuilder or FractionallySizedBox
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    gradient: const LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0xFF6EE7B7), Color(0xFF10B981)],
+                    ),
+                  ),
+                ),
+                
+                // Better Fill using FractionallySizedBox to be perfectly accurate
+                FractionallySizedBox(
+                   widthFactor: progress,
+                   child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 500),
+                      curve: Curves.easeOutCubic,
+                      decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          gradient: const LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Color(0xFFA7F3D0), Color(0xFF10B981)],
+                          )
+                      ),
+                      child: Stack(
+                         children: [
+                            // Inner specular highlight
+                            Positioned(
+                               top: 2,
+                               left: 4,
+                               right: 4,
+                               child: Container(
+                                  height: 6,
+                                  decoration: BoxDecoration(
+                                     color: Colors.white.withOpacity(0.6),
+                                     borderRadius: BorderRadius.circular(10)
+                                  ),
+                               )
+                            )
+                         ],
+                      ),
+                   ),
+                ),
+                
+                // Star Icon at far right of track
+                const Align(
+                   alignment: Alignment.centerRight,
+                   child: Padding(
+                      padding: EdgeInsets.only(right: 6.0),
+                      child: Icon(Icons.star_rounded, color: Colors.white38, size: 18),
+                   ),
+                ),
+                
+                // Text overlay showing numbers
+                Align(
+                  alignment: Alignment.center,
+                  child: Text(
+                    '$sortedTubes / $targetTubes',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14,
+                      shadows: [Shadow(color: Colors.black45, offset: Offset(0, 1), blurRadius: 2)],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
-    );
-  }
-}
-
-/// Individual stat item
-class _StatItem extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final GameTheme theme;
-
-  const _StatItem({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.theme,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: theme.accentColor,
-              size: 16,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.9),
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
     );
   }
 }
